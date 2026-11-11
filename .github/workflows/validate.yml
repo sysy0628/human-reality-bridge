@@ -2,7 +2,7 @@ name: Validate private build
 
 on:
   push:
-    branches: [main]
+    branches: [main, ci/verify-private-build]
   pull_request:
     branches: [main]
 
@@ -10,19 +10,66 @@ permissions:
   contents: read
 
 jobs:
-  node:
-    name: Syntax and mock tests
+  syntax-server:
+    name: Syntax — server
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - name: Syntax check
-        run: npm run check
-      - name: Mock test suite
-        run: npm test
+      - run: find server -type f -name '*.js' -print0 | xargs -0 -n1 node --check
+
+  syntax-browser:
+    name: Syntax — browser
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: find src -type f -name '*.js' -print0 | xargs -0 -n1 node --check
+
+  syntax-tests:
+    name: Syntax — tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: find test -type f -name '*.js' -print0 | xargs -0 -n1 node --check
+
+  tests:
+    name: Test — ${{ matrix.file }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    strategy:
+      fail-fast: false
+      matrix:
+        file:
+          - test/bootstrap.test.js
+          - test/bridge.test.js
+          - test/card-config.test.js
+          - test/config-writer.test.js
+          - test/config.test.js
+          - test/core.test.js
+          - test/health.test.js
+          - test/safe-log.test.js
+          - test/startup-test.test.js
+          - test/store.test.js
+          - test/templates.test.js
+          - test/wake-sender.test.js
+          - test/weather.test.js
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: node --test "${{ matrix.file }}"
 
   docker:
     name: Base Docker build
