@@ -1,0 +1,9 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { compareSnapshots, evaluateRules, isQuietAt, validateRules } from '../server/core.js';
+const base={weather:'多云',temperature:20,feelsLike:19,humidity:60,isRaining:false,presence:'未上报'};
+test('第一份快照只建立基线',()=>{const result=compareSnapshots(null,base);assert.equal(result.temperatureDelta,null);assert.deepEqual(result.changes,['已建立第一份实时环境基线']);});
+test('识别降雨与体感下降',()=>{const result=compareSnapshots(base,{...base,weather:'小雨',temperature:18,feelsLike:15,isRaining:true});assert.equal(result.feelsLikeDelta,-4);assert.ok(result.changes.includes('降水刚刚开始'));});
+test('规则持续确认、触发与冷却',()=>{const[rule]=validateRules([{id:'rain',enabled:true,field:'precipitationProbability',operator:'gte',value:70,persistMinutes:10,cooldownMinutes:60,action:'immediate'}]);const first=evaluateRules([rule],{precipitationProbability:80},null,{},1000);assert.equal(first.evaluations.rain.status,'observing');const second=evaluateRules([rule],{precipitationProbability:85},null,first.runtime,601000);assert.equal(second.evaluations.rain.status,'triggered');const third=evaluateRules([rule],{precipitationProbability:90},null,second.runtime,602000);assert.equal(third.evaluations.rain.status,'cooldown');});
+test('变化规则固定候选基线',()=>{const[rule]=validateRules([{id:'cold',enabled:true,field:'feelsLikeDelta',operator:'lte',value:-4,persistMinutes:10,cooldownMinutes:60,action:'normal'}]);const first=evaluateRules([rule],{feelsLike:16},{feelsLike:20},{},1000);const second=evaluateRules([rule],{feelsLike:16},{feelsLike:16},first.runtime,601000);assert.equal(second.evaluations.cold.value,-4);assert.equal(second.evaluations.cold.status,'triggered');});
+test('跨午夜免打扰',()=>{const quiet={enabled:true,start:'23:30',end:'07:00',timezone:'UTC'};assert.equal(isQuietAt(new Date('2026-01-01T23:45:00Z'),quiet),true);assert.equal(isQuietAt(new Date('2026-01-02T12:00:00Z'),quiet),false);});
