@@ -1,0 +1,138 @@
+import { createServer as createHttpsServer } from 'node:https';
+import { readFile } from 'node:fs/promises';
+import { pathToFileURL } from 'node:url';
+import { CONTROL_API_BODY_LIMIT, createControlApi } from './control-api.js';
+
+function requireText(name, value) {
+  if (typeof value !== 'string' || !value.trim()) throw new Error(`${name} 未配置`);
+  return value.trim();
+}
+
+function parsePort(value) {
+  const port = Number(value ?? 9443);
+  if (!Number.isInteger(port) || port < 1 || port > 65535) throw new Error('BRIDGE_CONTROL_PORT 无效');
+  return port;
+}
+
+function parseOrigins(value) {
+  const origins = requireText('BRIDGE_CONTROL_ALLOWED_ORIGINS', value)
+    .split(',').map(item => item.trim()).filter(Boolean);
+  if (origins.length === 0) throw new Error('BRIDGE_CONTROL_ALLOWED_ORIGINS 未配置');
+  return origins;
+}
+
+async function readRequiredFile(name, path, readFileImpl) {
+  const value = await readFileImpl(requireText(name, path), 'utf8');
+  if (typeof value !== 'string' || !value.trim()) throw new Error(`${name} 文件为空`);
+  return value;
+}
+
+export async function loadControlServerConfig(env = process.env, { readFileImpl = readFile } = {}) {
+  const [key, cert, tokenText] = await Promise.all([
+    readRequiredFile('BRIDGE_CONTROL_TLS_KEY_FILE', env.BRIDGE_CONTROL_TLS_KEY_FILE, readFileImpl),
+    readRequiredFile('BRIDGE_CONTROL_TLS_CERT_FILE', env.BRIDGE_CONTROL_TLS_CERT_FILE, readFileImpl),
+    readRequiredFile('BRIDGE_CONTROL_TOKEN_FILE', env.BRIDGE_CONTROL_TOKEN_FILE, readFileImpl)
+  ]);
+  const authToken = tokenText.trim();
+  if (authToken.length < 32) throw new Error('控制 API Token 至少需要 32 个字符');
+  return {
+    host: env.BRIDGE_CONTROL_HOST || '127.0.0.1',
+    port: parsePort(env.BRIDGE_CONTROL_PORT),
+    key,
+    cert,
+    authToken,
+    allowedOrigins: parseOrigins(env.BRIDGE_CONTROL_ALLOWED_ORIGINS),
+    bundlePath: requireText('BRIDGE_CONTROL_BUNDLE_FILE', env.BRIDGE_CONTROL_BUNDLE_FILE)
+  };
+}
+
+export function readRequestBody(request, { limit = CONTROL_API_BODY_LIMIT } = {}) {
+  return new Promise((resolve, reject) => {
+    let size = 0;
+    const chunks = [];
+    request.on('data', chunk => {
+      const bytes = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
+      size += bytes.length;
+      if (size > limit) {
+        const error = new Error('请求正文过大');
+        error.status = 413;
+        reject(error);
+        return;
+      }
+      chunks.push(bytes);
+    });
+    request.once('end', () => resolve(Buffer.concat(chunks).toString('utf8')));
+    request.once('error', reject);
+  });
+}
+
+function requestHeaders(headers = {}) {
+  return Object.fromEntries(Object.entries(headers).map(([key, value]) => [key.toLowerCase(), Array.isArray(value) ? value[0] : value]));
+}
+
+export function createControlRequestListener(api, { bodyLimit = CONTROL_API_BODY_LIMIT } = {}) {
+  return async (request, response) => {
+    try {
+      const url = new URL(request.url || '/', 'https://control.invalid');
+      const body = ['PUT', 'POST', 'PATCH'].includes(request.method)
+        ? await readRequestBody(request, { limit: bodyLimit })
+        : '';
+      const result = await api.handle({
+        method: request.method || 'GET',
+        pathname: url.pathname,
+        headers: requestHeaders(request.headers),
+        body,
+        secure: request.socket?.encrypted === true
+      });
+      response.writeHead(result.status, result.headers);
+      response.end(result.status === 204 ? undefined : result.body);
+    } catch (error) {
+      const status = error.status || 500;
+      response.writeHead(status, { 'content-type': 'application/json; charset=utf-8' });
+      response.end(JSON.stringify({ ok: false, error: status === 500 ? '控制服务内部错误' : error.message }));
+    }
+  };
+}
+
+export async function startControlServer({
+  env = process.env,
+  readFileImpl = readFile,
+  createServerImpl = createHttpsServer,
+  writeLog = line => console.log(line)
+} = {}) {
+  const config = await loadControlServerConfig(env, { readFileImpl });
+  const api = createControlApi(config);
+  const server = createServerImpl({ key: config.key, cert: config.cert }, createControlRequestListener(api));
+  await new Promise((resolve, reject) => {
+    server.once('error', reject);
+    server.listen(config.port, config.host, resolve);
+  });
+  writeLog(JSON.stringify({
+    at: new Date().toISOString(), level: 'info', message: '控制服务已启动',
+    host: config.host, port: config.port, originCount: config.allowedOrigins.length
+  }));
+  return {
+    server,
+    config: { host: config.host, port: config.port, originCount: config.allowedOrigins.length },
+    close: () => new Promise((resolve, reject) => server.close(error => error ? reject(error) : resolve()))
+  };
+}
+
+async function main() {
+  const running = await startControlServer();
+  let closing = false;
+  const stop = async () => {
+    if (closing) return;
+    closing = true;
+    await running.close();
+  };
+  process.once('SIGTERM', stop);
+  process.once('SIGINT', stop);
+}
+
+if (import.meta.url === pathToFileURL(process.argv[1] || '').href) {
+  main().catch(error => {
+    console.error(JSON.stringify({ at: new Date().toISOString(), level: 'error', message: '控制服务启动失败' }));
+    process.exitCode = 1;
+  });
+}
