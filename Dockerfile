@@ -7,7 +7,7 @@ COPY package.json ./
 COPY server ./server
 COPY config.example.json ./config.example.json
 
-RUN mkdir -p /app/data /app/config && chown -R node:node /app
+RUN mkdir -p /app/data /app/config /app/secrets && chown -R node:node /app
 USER node
 
 HEALTHCHECK --interval=30s --timeout=3s --start-period=20s --retries=3 CMD ["node", "server/healthcheck.js"]
