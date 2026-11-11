@@ -1,6 +1,16 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+created_env=false
+if [[ ! -e .env ]]; then
+  : > .env
+  created_env=true
+fi
+cleanup() {
+  if [[ "$created_env" == true ]]; then rm -f .env; fi
+}
+trap cleanup EXIT
+
 export BRIDGE_ARU_SENDER_HOST_PATH=/tmp/mock-aru-sender.mjs
 export BRIDGE_CONTROL_ALLOWED_ORIGINS=https://card.example
 export BRIDGE_CONTROL_HOST_PORT=19443
