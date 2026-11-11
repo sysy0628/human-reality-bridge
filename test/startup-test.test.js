@@ -1,0 +1,5 @@
+import test from 'node:test';import assert from 'node:assert/strict';import { shouldCreateStartupTest,createStartupTestEvent,hasPendingStartupTest } from '../server/startup-test.js';const config={sendStartupTest:true};const trigger={configured:true,credentialId:'fingerprint'};
+test('同一凭据成功后不重复测试',()=>{assert.equal(shouldCreateStartupTest(config,trigger,{lastStartupTestCredentialId:'fingerprint',pendingEvents:[]}),false);});
+test('更换凭据允许创建一次测试',()=>{assert.equal(shouldCreateStartupTest(config,trigger,{lastStartupTestCredentialId:'old',pendingEvents:[]}),true);const event=createStartupTestEvent('fingerprint',1000);assert.equal(event.id,'startup-test:fingerprint');assert.equal(event.payload.eventId,event.id);});
+test('已有待发送状态时不覆盖为测试',()=>{assert.equal(shouldCreateStartupTest(config,trigger,{lastStartupTestCredentialId:null,pendingEvents:[{id:'latest-weather'}]}),false);});
+test('识别待重试启动测试',()=>{assert.equal(hasPendingStartupTest({pendingEvents:[{type:'environment.test'}]}),true);assert.equal(hasPendingStartupTest({pendingEvents:[{type:'environment.latest_state'}]}),false);});
