@@ -1,0 +1,25 @@
+# Secrets and local deployment state
+.env
+.env.*
+!.env.example
+config.json
+data/
+*.log
+*.secret
+*.secrets
+*sender-bundle*.json
+secrets/
+
+# Development-only files
+.git/
+.gitignore
+node_modules/
+test/
+docs/
+index.html
+src/
+README.md
+.DS_Store
+
+# Compose does not need to enter the image context
+compose.yaml

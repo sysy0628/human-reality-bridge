@@ -1,0 +1,25 @@
+services:
+  reality-bridge:
+    build: .
+    container_name: human-reality-bridge
+    restart: unless-stopped
+    init: true
+    env_file:
+      - .env
+    environment:
+      BRIDGE_CONFIG: /app/config/config.json
+      BRIDGE_DATA_DIR: /app/data
+    volumes:
+      - bridge-config:/app/config
+      - bridge-data:/app/data
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    read_only: true
+    tmpfs:
+      - /tmp:size=16m,mode=1777
+
+volumes:
+  bridge-config:
+  bridge-data:

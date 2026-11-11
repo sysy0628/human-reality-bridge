@@ -1,0 +1,14 @@
+.env
+.env.*
+!.env.example
+data/
+node_modules/
+*.log
+.DS_Store
+
+config.json
+*.secret
+*.secrets
+*sender-bundle*.json
+secrets/
+docs/handoff.md

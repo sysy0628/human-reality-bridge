@@ -1,0 +1,8 @@
+services:
+  reality-bridge:
+    environment:
+      BRIDGE_WAKE_SENDER_MODULE: /opt/wake-field/wake-send.mjs
+      BRIDGE_WAKE_BUNDLE_FILE: /run/secrets/aru-sender-bundle.json
+    volumes:
+      - ${BRIDGE_WAKE_SENDER_HOST_PATH:?请设置 sender 宿主机路径}:/opt/wake-field/wake-send.mjs:ro
+      - ${BRIDGE_WAKE_BUNDLE_HOST_PATH:?请设置 bundle secret 宿主机路径}:/run/secrets/aru-sender-bundle.json:ro

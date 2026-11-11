@@ -1,0 +1,16 @@
+{
+  "enabled": false,
+  "location": { "latitude": 30.2741, "longitude": 120.1551, "timezone": "Asia/Shanghai" },
+  "airQuality": { "enabled": false },
+  "diagnostics": { "historyEnabled": true },
+  "scheduled": { "enabled": true, "intervalMinutes": 180, "deliverWithoutChange": true },
+  "quietHours": { "enabled": true, "start": "23:30", "end": "07:00", "timezone": "Asia/Shanghai" },
+  "templates": {
+    "scheduled": "人类现实环境定时更新｜{{observed_time}}\n{{period}}天气：{{weather}}\n温度 {{temperature}}，体感 {{feels_like}}；湿度 {{humidity}}；{{wind}}。\n天色：{{daylight}}；空气质量：{{air_quality}}。\n{{environment_summary}}",
+    "change": "人类现实环境变化｜{{observed_time}}\n触发原因：{{trigger_reason}}\n变化：{{change_summary}}\n当前天气：{{weather}}；温度 {{temperature}}，体感 {{feels_like}}。\n{{environment_summary}}"
+  },
+  "rules": [
+    { "id": "rain-probability", "enabled": true, "field": "precipitationProbability", "operator": "gte", "value": 70, "persistMinutes": 10, "cooldownMinutes": 60, "action": "immediate" },
+    { "id": "feels-like-drop", "enabled": true, "field": "feelsLikeDelta", "operator": "lte", "value": -4, "persistMinutes": 10, "cooldownMinutes": 120, "action": "normal" }
+  ]
+}

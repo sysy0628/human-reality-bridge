@@ -1,0 +1,3 @@
+export function shouldCreateStartupTest(config, trigger, state) { return Boolean(config.sendStartupTest && trigger.configured && trigger.credentialId && trigger.credentialId !== state.lastStartupTestCredentialId && state.pendingEvents.length === 0); }
+export function createStartupTestEvent(credentialId, now = Date.now()) { if (!credentialId) throw new Error('缺少发送凭据指纹'); const id = `startup-test:${credentialId}`; return { id, type: 'environment.test', action: 'immediate', credentialId, payload: { schema: 'human-reality-bridge.event.v1', event: 'environment.test', eventId: id, occurredAt: new Date(now).toISOString(), deliveryText: '人类现实感应桥测试事件：连接已建立。' } }; }
+export function hasPendingStartupTest(state) { return state.pendingEvents.at(-1)?.type === 'environment.test'; }

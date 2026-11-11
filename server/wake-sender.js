@@ -1,0 +1,13 @@
+import { createHash } from 'node:crypto';
+import { readFile } from 'node:fs/promises';
+import { pathToFileURL } from 'node:url';
+function requirePath(name, value) { if (typeof value !== 'string' || !value.trim()) throw new Error(`${name} 未配置`); return value.trim(); }
+function bundleFingerprint(content) { return createHash('sha256').update('human-reality-bridge:wake-sender-bundle:v1\0').update(content).digest('hex').slice(0, 16); }
+function deliveryContent(payload) { if (!payload || typeof payload !== 'object' || Array.isArray(payload)) throw new Error('待递送事件格式无效'); if (typeof payload.deliveryText !== 'string' || !payload.deliveryText.trim()) throw new Error('待递送事件缺少 deliveryText'); if (payload.deliveryText.length > 6000) throw new Error('待递送正文超过 6000 个字符'); return payload.deliveryText; }
+export class WakeFieldSender {
+  constructor({ modulePath, bundlePath, readFileImpl = readFile, importModuleImpl = specifier => import(specifier) } = {}) { this.modulePath = modulePath || ''; this.bundlePath = bundlePath || ''; this.readFileImpl = readFileImpl; this.importModuleImpl = importModuleImpl; this.submitWakeEvent = null; this.bundle = null; this.bundleId = null; }
+  get configured() { return Boolean(this.modulePath && this.bundlePath); }
+  get credentialId() { return this.bundleId; }
+  async initialize() { const modulePath = requirePath('Wake Field sender 模块路径', this.modulePath); const bundlePath = requirePath('Wake Field bundle 文件路径', this.bundlePath); const bundleText = await this.readFileImpl(bundlePath, 'utf8'); if (typeof bundleText !== 'string' || !bundleText.trim()) throw new Error('Wake Field bundle 文件为空'); let bundle; try { bundle = JSON.parse(bundleText); } catch { throw new Error('Wake Field bundle 文件不是有效 JSON'); } if (!bundle || typeof bundle !== 'object' || Array.isArray(bundle)) throw new Error('Wake Field bundle 必须是 JSON 对象'); if (bundle.schema !== 'aru.wake-bridge.sender-bundle.v2') throw new Error('Wake Field bundle schema 无效'); const moduleSpecifier = modulePath.startsWith('file:') ? modulePath : pathToFileURL(modulePath).href; const senderModule = await this.importModuleImpl(moduleSpecifier); if (typeof senderModule?.submitWakeEvent !== 'function') throw new Error('Wake Field sender 模块缺少 submitWakeEvent(bundle, content)'); this.submitWakeEvent = senderModule.submitWakeEvent; this.bundle = Object.freeze(bundle); this.bundleId = bundleFingerprint(bundleText); return this; }
+  async send(payload) { if (!this.submitWakeEvent || !this.bundle) throw new Error('Wake Field sender 尚未初始化'); await this.submitWakeEvent(this.bundle, deliveryContent(payload)); }
+}
