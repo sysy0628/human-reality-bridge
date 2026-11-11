@@ -25,7 +25,7 @@ jobs:
         run: npm test
 
   docker:
-    name: Base Docker build and disabled smoke test
+    name: Base Docker build and container smoke tests
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -52,3 +52,6 @@ jobs:
       - name: Run disabled container smoke test
         shell: bash
         run: bash scripts/smoke-disabled-container.sh human-reality-bridge:ci
+      - name: Run offline mock sender integration
+        shell: bash
+        run: bash scripts/smoke-mock-sender-container.sh human-reality-bridge:ci
