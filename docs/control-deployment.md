@@ -10,7 +10,7 @@ Aru 卡片
   → 受控反向代理
   → 127.0.0.1:9443
   → control 容器
-  → bridge-secrets 命名卷
+  → bridge-pairing 命名卷
   ← reality-bridge 容器只读挂载
 ```
 
@@ -22,7 +22,7 @@ Aru 卡片
 
 不得改成 `0.0.0.0:9443:9443`。外部请求必须经过经过审核的 HTTPS 入口。
 
-## Secret 文件
+## Secret 文件与运行时配对卷
 
 部署前分别创建：
 
@@ -39,7 +39,7 @@ control token:    0600
 sender module:    0644 或更严格，只读挂载
 ```
 
-Aru sender bundle 不预先放在宿主机路径中。它由卡片通过受保护 PUT 接口写入 `bridge-secrets` 命名卷，控制服务读写挂载，环境桥只读挂载。
+Aru sender bundle 不预先放在宿主机路径中。它由卡片通过受保护 PUT 接口写入 `bridge-pairing` 命名卷中的 `/app/pairing/aru-sender-bundle.json`。控制服务读写挂载，环境桥只读挂载。基础镜像只包含归非 root 用户所有的空挂载点，不包含 bundle 或任何 secret 文件。
 
 ## 资源限制
 

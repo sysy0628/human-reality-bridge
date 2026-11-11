@@ -5,9 +5,9 @@ services:
   reality-bridge:
     environment:
       BRIDGE_WAKE_SENDER_MODULE: /opt/aru-sender/wake-send.mjs
-      BRIDGE_WAKE_BUNDLE_FILE: /app/secrets/aru-sender-bundle.json
+      BRIDGE_WAKE_BUNDLE_FILE: /app/pairing/aru-sender-bundle.json
     volumes:
-      - bridge-secrets:/app/secrets:ro
+      - bridge-pairing:/app/pairing:ro
       - ${BRIDGE_ARU_SENDER_HOST_PATH:?请设置兼容 sender 模块宿主机路径}:/opt/aru-sender/wake-send.mjs:ro
 
   control:
@@ -23,11 +23,11 @@ services:
       BRIDGE_CONTROL_TLS_KEY_FILE: /run/control-secrets/tls.key
       BRIDGE_CONTROL_TLS_CERT_FILE: /run/control-secrets/tls.crt
       BRIDGE_CONTROL_TOKEN_FILE: /run/control-secrets/control-token
-      BRIDGE_CONTROL_BUNDLE_FILE: /app/secrets/aru-sender-bundle.json
+      BRIDGE_CONTROL_BUNDLE_FILE: /app/pairing/aru-sender-bundle.json
     ports:
       - 127.0.0.1:${BRIDGE_CONTROL_HOST_PORT:-9443}:9443
     volumes:
-      - bridge-secrets:/app/secrets
+      - bridge-pairing:/app/pairing
       - ${BRIDGE_CONTROL_TLS_KEY_HOST_PATH:?请设置 TLS 私钥路径}:/run/control-secrets/tls.key:ro
       - ${BRIDGE_CONTROL_TLS_CERT_HOST_PATH:?请设置 TLS 证书路径}:/run/control-secrets/tls.crt:ro
       - ${BRIDGE_CONTROL_TOKEN_HOST_PATH:?请设置控制 Token 文件路径}:/run/control-secrets/control-token:ro
@@ -48,4 +48,4 @@ services:
         max-file: "3"
 
 volumes:
-  bridge-secrets:
+  bridge-pairing:
