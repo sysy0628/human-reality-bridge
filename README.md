@@ -27,7 +27,7 @@ Open-Meteo → 环境服务 → Delivery Adapter → Aru 外部触发器
 
 ## 两条递送路径
 
-项目计划支持两条相互独立的接入路径，共用天气、规则、模板和状态核心：
+项目计划支持两条相互独立的接入路径，共用天气、规则、模板和状态核心。
 
 ### 1. 复用既有 Wake Field sender
 
@@ -38,6 +38,8 @@ Open-Meteo → 环境服务 → Delivery Adapter → Aru 外部触发器
 - 只把最终 `deliveryText` 交给 `submitWakeEvent(bundle, content)`；
 - 不在本项目复制第二份 Wake Bridge 加密协议；
 - sender 与 bundle 未同时配置时保持禁用。
+
+目前已通过 mock 测试，但尚未使用真实 sender 与 bundle 做端到端递送验收。
 
 ### 2. 直接新建 Aru 外部触发器
 
@@ -84,25 +86,31 @@ docker build -t human-reality-bridge:local .
 已经完成：
 
 - Private GitHub 仓库与核心源码归档；
-- VPS 隔离目录中的 Node 22 核心行为探针：7 项通过；
-- Docker 安全探针：非 root、只读根文件系统、命名卷可写、状态文件 `0600`、镜像无 secret 路径；
-- 探针资源已全部清理。
+- GitHub Actions 自动执行 `npm run check` 与 `npm test`；
+- 当前正式源码的服务端、浏览器端和测试文件语法检查通过；
+- 13 个服务端 mock 测试文件全部通过；
+- 正式基础 Dockerfile 构建通过；
+- CI 镜像路径检查未发现 `.env`、真实 `config.json`、sender bundle 或 secret 目录；
+- VPS 隔离环境的 Node 22 核心行为探针 7 项通过；
+- Docker 安全探针确认非 root、只读根文件系统、命名卷可写、状态文件 `0600`；
+- Shell 探针资源已全部清理。
 
 仍需完成：
 
-- 对 Private 仓库当前完整提交运行 `npm run check` 与 `npm test`；
-- 对正式 Dockerfile 做完整构建与服务健康检查；
-- 实现受保护的控制面板保存 API；
-- 完成第二条直接外部触发器适配；
+- 正式服务未配置 sender 时的完整启动与健康检查验收；
+- 真实 Wake Field sender / bundle 的端到端测试；
+- 控制面板浏览器交互与受保护保存 API 的 E2E 测试；
+- 第二条直接外部触发器适配；
 - 经明确授权后，才进行一次真实 Wake Field 测试递送。
 
-> 注意：当前 GitHub 连接没有写入 Actions workflow 的权限，因此仓库尚未安装自动 CI。不能把隔离探针结果等同于完整仓库测试通过。
+CI 只使用 mock 和基础镜像，不加载 sender 凭据、不挂载 bundle、不连接 Wake Field，也不执行真实递送。
 
 ## 目录
 
 - `server/`：环境服务、规则、模板、状态、日志与 Wake Field sender 薄适配；
 - `src/`、`index.html`：Aru 控制面板原型；
 - `test/`：服务端 mock 测试；
+- `.github/workflows/validate.yml`：Private 仓库自动验证；
 - `docs/architecture.md`：架构与双路径说明；
 - `docs/deployment.md`：内部验证阶段的安全部署边界；
 - `docs/event-schema.md`：脱敏快照与事件契约；
