@@ -26,8 +26,9 @@ function fingerprint(canonical) {
 }
 
 export function parseAruTriggerBundle(raw) {
-  if (typeof raw !== 'string' || !raw.trim()) throw new Error('发送凭据不能为空');
+  if (typeof raw !== 'string') throw new Error('发送凭据不能为空');
   if (Buffer.byteLength(raw, 'utf8') > MAX_BUNDLE_BYTES) throw new Error('发送凭据过大');
+  if (!raw.trim()) throw new Error('发送凭据不能为空');
 
   let bundle;
   try { bundle = JSON.parse(raw); }
