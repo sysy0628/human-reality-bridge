@@ -1,0 +1,51 @@
+# 与 compose.yaml 叠加使用。先复制为不提交的私有 override，并填写 .env 中的宿主机路径。
+# 控制服务容器内监听 0.0.0.0:9443，但宿主机只绑定 127.0.0.1。
+# 公网入口必须经过经过审核的 HTTPS 反向代理，不能把 9443 直接暴露到 0.0.0.0。
+services:
+  reality-bridge:
+    environment:
+      BRIDGE_WAKE_SENDER_MODULE: /opt/aru-sender/wake-send.mjs
+      BRIDGE_WAKE_BUNDLE_FILE: /app/pairing/aru-sender-bundle.json
+    volumes:
+      - bridge-pairing:/app/pairing:ro
+      - ${BRIDGE_ARU_SENDER_HOST_PATH:?请设置兼容 sender 模块宿主机路径}:/opt/aru-sender/wake-send.mjs:ro
+
+  control:
+    build: .
+    container_name: human-reality-bridge-control
+    command: ["node", "server/control-server.js"]
+    restart: unless-stopped
+    init: true
+    environment:
+      BRIDGE_CONTROL_HOST: 0.0.0.0
+      BRIDGE_CONTROL_PORT: 9443
+      BRIDGE_CONTROL_ALLOWED_ORIGINS: ${BRIDGE_CONTROL_ALLOWED_ORIGINS:?请设置精确 HTTPS origin}
+      BRIDGE_CONTROL_TLS_KEY_FILE: /run/control-secrets/tls.key
+      BRIDGE_CONTROL_TLS_CERT_FILE: /run/control-secrets/tls.crt
+      BRIDGE_CONTROL_TOKEN_FILE: /run/control-secrets/control-token
+      BRIDGE_CONTROL_BUNDLE_FILE: /app/pairing/aru-sender-bundle.json
+    ports:
+      - 127.0.0.1:${BRIDGE_CONTROL_HOST_PORT:-9443}:9443
+    volumes:
+      - bridge-pairing:/app/pairing
+      - ${BRIDGE_CONTROL_TLS_KEY_HOST_PATH:?请设置 TLS 私钥路径}:/run/control-secrets/tls.key:ro
+      - ${BRIDGE_CONTROL_TLS_CERT_HOST_PATH:?请设置 TLS 证书路径}:/run/control-secrets/tls.crt:ro
+      - ${BRIDGE_CONTROL_TOKEN_HOST_PATH:?请设置控制 Token 文件路径}:/run/control-secrets/control-token:ro
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    read_only: true
+    tmpfs:
+      - /tmp:size=8m,mode=1777
+    mem_limit: 96m
+    cpus: 0.20
+    pids_limit: 48
+    logging:
+      driver: json-file
+      options:
+        max-size: 5m
+        max-file: "3"
+
+volumes:
+  bridge-pairing:
