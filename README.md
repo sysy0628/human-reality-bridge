@@ -2,69 +2,44 @@
 
 > 当前状态：**Private 内部验证版**。尚未面向公众发布，也不应被视为已完成的通用部署包。
 
-人类现实感应桥把公开气象源的观测整理为客观、克制的「使用者所处的人类现实环境数据」，再按定时计划或显著变化递送到 Aru。
-
-这些数据不是 AI 的亲身感官，也不表示 AI 与使用者处于同一物理空间。
+人类现实感应桥把公开气象源的观测整理为客观、克制的“使用者所处的人类现实环境数据”，再按定时计划或显著变化递送到 Aru。这些数据不是 AI 的亲身感官，也不表示 AI 与使用者处于同一物理空间。
 
 ## 当前架构
 
 ```text
-Open-Meteo → 环境服务 → Delivery Adapter → Aru 外部触发器
+Open-Meteo → 环境服务 → 兼容 submitWakeEvent sender → Aru 外部触发器
                       ↑
-                Aru 控制面板
+                Aru 普通卡片
+                      ↓
+              受保护 HTTPS control API
 ```
 
-环境服务负责：
+环境服务支持天气、默认关闭的空气质量、检查与递送频率分离、结构化规则、持续确认、冷却、跨午夜免打扰、单槽位最新状态、用户模板、脱敏排障记录与日志白名单。
 
-- 当前天气、温度、体感、湿度、风、降水、云量与昼夜；
-- 默认关闭的可选空气质量；
-- 检查频率和递送频率分离；
-- 结构化规则、持续确认、冷却与跨午夜免打扰；
-- 断网或免打扰期间只保留最新环境状态；
-- 用户可编辑的定时/变化纯文本模板；
-- 最多 7 天 / 200 条的脱敏排障记录；
-- 普通日志字段白名单。
+## 递送与配对状态
 
-## 两条递送路径
+服务端已经实现：
 
-项目计划支持两条相互独立的接入路径，共用天气、规则、模板和状态核心。
+- 动态加载兼容 `submitWakeEvent(bundle, content)` 的 sender；
+- 严格校验 `aru.wake-bridge.sender-bundle.v2`；
+- `0600` 原子凭据存储与脱敏摘要；
+- HTTPS-only、精确 Origin、Bearer 鉴权、20 KiB 请求上限的配对 API；
+- 默认仅监听回环的独立 HTTPS control server；
+- 卡片侧 GET/PUT 配对客户端；
+- control 读写、environment bridge 只读的运行时配对卷；
+- 回环端口、资源与日志限制的 Compose 草案。
 
-### 1. 复用既有 Wake Field sender
+新建 Aru 外部触发器提供兼容的 v2 bundle，因此直接触发器路径复用同一 sender，不复制加密协议。保存配对只写入凭据，不创建或发送事件；该边界有 mock 测试锁定。
 
-当前服务端已经实现这一条路径：
-
-- 动态加载兼容的 sender 模块；
-- 从只读 secret 文件加载 `aru.wake-bridge.sender-bundle.v2`；
-- 只把最终 `deliveryText` 交给 `submitWakeEvent(bundle, content)`；
-- 不在本项目复制第二份 Wake Bridge 加密协议；
-- sender 与 bundle 未同时配置时保持禁用。
-
-目前已通过 mock 测试，但尚未使用真实 sender 与 bundle 做端到端递送验收。
-
-### 2. 直接新建 Aru 外部触发器
-
-面向没有既有 Wake Field 部署的使用者。控制面板已有发送凭据的页面内存校验原型，但以下部分仍未完成：
-
-- 受保护的配对/保存 API；
-- 独立的直接外部触发器 Delivery Adapter；
-- 凭据生命周期、轮换和部署向导；
-- 完整端到端验收。
-
-因此目前不能把第二条路径描述为可部署完成。
+尚未进行真实 VPS 部署、真实配对或真实递送。
 
 ## 隐私边界
 
-城市、行政区、搜索文字、经纬度与内部位置 ID 只允许在天气取数边界使用，不进入：
+城市、行政区、搜索文字、经纬度与内部位置 ID 只允许在天气取数边界使用，不进入卡片环境展示、递送正文、普通日志、排障历史、模板变量或对外事件。
 
-- 卡片环境展示；
-- 递送正文；
-- 普通日志或排障历史；
-- 模板变量；
-- 对外环境事件。
+真实 sender bundle、Token、`.env` 与运行配置不得提交到仓库。卡片只允许持久化控制地址；Control Token 与 sender bundle 只留页面内存。
 
-控制面板不会把城市搜索文字或完整地点对象写入 `localStorage`。真实 sender bundle、Token、`.env` 与运行配置不得提交到仓库。
-
-## 本地检查
+## 自动验证
 
 需要 Node.js 20 或更高版本：
 
@@ -73,49 +48,41 @@ npm run check
 npm test
 ```
 
-基础镜像构建：
+GitHub Actions 还执行：
 
-```bash
-docker build -t human-reality-bridge:local .
-```
+- Control Compose 结构校验；
+- 基础 Docker 镜像构建；
+- 镜像常见 secret 路径检查；
+- `--network none` 的关闭态容器 smoke test；
+- `--network none` 的假 sender + 假 bundle 集成测试。
 
-基础镜像默认不包含、挂载或启用 sender。任何真实递送测试都必须单独确认后进行。
+CI 不加载真实凭据、不连接 Wake Field 或 Aru，也不执行真实递送。
 
-## 当前验证状态
+## 当前阶段
 
-已经完成：
+已完成代码与 mock 层的控制 API、鉴权、CORS、bundle 存储、日志脱敏、卡片配对客户端、安全部署草案和自动验证。
 
-- Private GitHub 仓库与核心源码归档；
-- GitHub Actions 自动执行 `npm run check` 与 `npm test`；
-- 当前正式源码的服务端、浏览器端和测试文件语法检查通过；
-- 13 个服务端 mock 测试文件全部通过；
-- 正式基础 Dockerfile 构建通过；
-- CI 镜像路径检查未发现 `.env`、真实 `config.json`、sender bundle 或 secret 目录；
-- VPS 隔离环境的 Node 22 核心行为探针 7 项通过；
-- Docker 安全探针确认非 root、只读根文件系统、命名卷可写、状态文件 `0600`；
-- Shell 探针资源已全部清理。
+尚未完成：
 
-仍需完成：
+- VPS 只读预检及基于实机情况的部署/回滚定稿；
+- 空载 control 服务部署；
+- 普通卡片真实“检查连接”及网络侧 Origin 确认；
+- 真实 bundle 配对；
+- 部署后空载运行验收；
+- 经单独确认的一次真实测试递送。
 
-- 正式服务未配置 sender 时的完整启动与健康检查验收；
-- 真实 Wake Field sender / bundle 的端到端测试；
-- 控制面板浏览器交互与受保护保存 API 的 E2E 测试；
-- 第二条直接外部触发器适配；
-- 经明确授权后，才进行一次真实 Wake Field 测试递送。
-
-CI 只使用 mock 和基础镜像，不加载 sender 凭据、不挂载 bundle、不连接 Wake Field，也不执行真实递送。
+详细、可供普通对话直接读取的状态见 [`docs/project-handoff.md`](docs/project-handoff.md)。部署边界见 [`docs/control-deployment.md`](docs/control-deployment.md)。
 
 ## 目录
 
-- `server/`：环境服务、规则、模板、状态、日志与 Wake Field sender 薄适配；
-- `src/`、`index.html`：Aru 控制面板原型；
-- `test/`：服务端 mock 测试；
+- `server/`：环境服务、规则、模板、状态、日志、sender 与 control 服务；
+- `src/`、`index.html`：Aru 普通卡片前端源码；
+- `test/`：mock 测试；
+- `scripts/`：Compose 校验与无网络容器测试；
 - `.github/workflows/validate.yml`：Private 仓库自动验证；
-- `docs/architecture.md`：架构与双路径说明；
-- `docs/deployment.md`：内部验证阶段的安全部署边界；
-- `docs/event-schema.md`：脱敏快照与事件契约；
-- `compose.yaml`：不启用 sender 的基础部署；
-- `compose.wake.example.yaml`：可选只读 sender/bundle 挂载示例。
+- `docs/project-handoff.md`：当前状态、阶段完成度与下一步；
+- `docs/control-deployment.md`：控制服务安全部署与只读预检；
+- `compose.yaml`、`compose.control.example.yaml`：基础与控制服务草案。
 
 ## 发布与许可证
 
