@@ -22,6 +22,18 @@ Aru 卡片
 
 不得改成 `0.0.0.0:9443:9443`。外部请求必须经过经过审核的 HTTPS 入口。
 
+## 确认 Aru 卡片 Origin
+
+配对页会只在本地读取并显示 `window.location.origin`。它不会发送或持久化该值。
+
+- 规范的 HTTPS 值只能作为 `BRIDGE_CONTROL_ALLOWED_ORIGINS` 的候选；
+- `http:`、`null`（不透明 origin）、缺失值或带路径的异常值不得进入正式白名单；
+- 页面显示值不等同于网络侧最终证据。部署控制入口后，必须以入口实际收到的 `Origin` 请求头完成确认；
+- 反向代理可以记录用于确认的 Origin 值，但不得记录 `Authorization` 或请求正文；
+- 白名单必须使用完整、精确的 HTTPS origin，不使用通配符，不附加路径。
+
+首次“检查连接”只验证 HTTPS、CORS 和 Bearer 鉴权，不保存 bundle，也不触发递送。如果实际请求头与候选值不一致，应停止并修正白名单，不得临时放宽为 `*`。
+
 ## Secret 文件与运行时配对卷
 
 部署前分别创建：
@@ -66,6 +78,38 @@ Aru sender bundle 不预先放在宿主机路径中。它由卡片通过受保�
 - 对公网启用合理的连接与请求频率限制。
 
 不要通过关闭上游证书校验来绕过配置问题。
+
+## 部署前只读检查
+
+这一步只收集容量、运行时、监听端口和代理类型，不创建目录、不拉取镜像、不修改配置、不重启服务，也不读取任何 secret、环境变量正文、请求日志或 shell history。
+
+建议由操作者逐项运行并只记录脱敏结论：
+
+```bash
+id
+umask
+uname -srm
+df -h /
+free -h
+docker version --format '{{.Server.Version}}'
+docker compose version
+docker ps --format 'table {{.Names}}\t{{.Image}}\t{{.Status}}\t{{.Ports}}'
+ss -ltn
+systemctl is-active docker nginx caddy apache2 2>/dev/null || true
+```
+
+如果需要检查防火墙，只读取规则摘要，例如 `ufw status` 或当前平台的等价命令；不要在本阶段执行 allow/reload。输出在分享前应去除公网 IP、主机名、私有镜像地址和无关服务信息。
+
+明确禁止在只读检查中运行：
+
+- `cat`、`less`、`grep` 真实 `.env`、Token、证书私钥或 sender bundle；
+- `docker inspect` 后直接分享完整结果，因为其中可能包含环境变量；
+- `env`、`printenv`、`history`；
+- `docker compose up/pull/build`；
+- `systemctl restart/reload`；
+- 防火墙修改、端口开放、文件权限修改或凭据生成。
+
+只读检查结束后应形成：可用内存/磁盘、Docker/Compose 版本、80/443/9443 监听冲突、现有反向代理类型、回环上游可行性，以及不含秘密的部署与回滚计划。
 
 ## 配置验收
 
