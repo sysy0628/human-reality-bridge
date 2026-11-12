@@ -35,9 +35,7 @@ files=(
   config.example.json
   package.json
   server
-  scripts/smoke-disabled-container.sh
-  scripts/smoke-mock-sender-container.sh
-  scripts/validate-control-compose.sh
+  scripts
 )
 
 for path in "${files[@]}"; do
