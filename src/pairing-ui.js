@@ -1,8 +1,10 @@
 import { getPairingStatus, normalizeControlBaseURL, savePairing } from './control-client.js';
+import { inspectRuntimeOrigin } from './runtime-origin.js';
 
 let controlToken = '';
 let pairingStatus = null;
 let busy = false;
+const runtimeOrigin = inspectRuntimeOrigin();
 
 function escapeText(value) {
   return String(value ?? '').replace(/[&<>"]/g, character => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[character]));
@@ -13,6 +15,11 @@ function statusText() {
   if (!pairingStatus) return '尚未检查 VPS 连接';
   if (!pairingStatus.configured) return 'VPS 已认证 · 尚未保存触发器';
   return `VPS 已认证 · ${pairingStatus.host} · 触发器尾号 ${pairingStatus.triggerTail}`;
+}
+
+function originText() {
+  const observed = runtimeOrigin.origin ? `页面 Origin：${runtimeOrigin.origin}` : '页面 Origin：不可用';
+  return `${observed}。${runtimeOrigin.message}最终白名单值必须以控制入口实际收到的 Origin 请求头为准。`;
 }
 
 function mountPairingControls() {
@@ -26,6 +33,7 @@ function mountPairingControls() {
   panel.className = 'control-connection';
   panel.innerHTML = `
     <div class="rule-intro">先连接自己的 VPS。控制 Token 只保留在当前页面内存，刷新即清除。</div>
+    <div class="credential-result show ${runtimeOrigin.status === 'https-candidate' ? 'success' : 'error'}" id="runtimeOriginStatus">${escapeText(originText())}</div>
     <div class="connection-grid">
       <input class="control" id="controlBaseURL" inputmode="url" autocomplete="url" placeholder="https://你的控制地址" value="${escapeText(settings.controlBaseURL || '')}">
       <input class="control" id="controlToken" type="password" autocomplete="off" placeholder="控制 Token（不保存）" value="${escapeText(controlToken)}">
