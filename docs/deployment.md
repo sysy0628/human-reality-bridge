@@ -1,25 +1,12 @@
 # 部署说明（内部验证阶段）
 
-> 当前仓库保持 Private。以下内容用于安全验收，不代表已经发布的通用部署方案。
+> 当前仓库保持 Private。以下内容用于安全验收，不代表已经部署或发布。未经维护者明确确认，不修改 VPS、不生成或读取真实凭据、不开放端口，也不触发真实递送。
 
 ## 基础模式
 
-基础 `compose.yaml`：
+基础 `compose.yaml` 默认不配置 sender，并使用非 root 镜像用户、只读根文件系统、丢弃 capabilities、`no-new-privileges`、受限 tmpfs、资源限制和命名卷。
 
-- 默认不配置 sender；
-- 使用非 root 镜像用户；
-- 根文件系统只读；
-- 丢弃 Linux capabilities；
-- 启用 `no-new-privileges`；
-- 配置与状态使用命名卷。
-
-准备本地配置：
-
-```bash
-cp .env.example .env
-```
-
-然后进行构建检查：
+本地检查：
 
 ```bash
 npm run check
@@ -27,56 +14,49 @@ npm test
 docker compose build
 ```
 
-不要把 `.env`、`config.json`、状态目录、日志或 sender bundle 提交到 Git。
+不要把 `.env`、`config.json`、状态目录、日志、Token 或 sender bundle 提交到 Git。
 
-## 可选 Wake Field sender 模式
+## 受保护控制服务
 
-`compose.wake.example.yaml` 仅是叠加示例。部署者应创建不提交到仓库的私有 override，并设置两个宿主机路径：
+`compose.control.example.yaml` 与基础 Compose 叠加，提供：
 
-```env
-BRIDGE_WAKE_SENDER_HOST_PATH=/absolute/path/to/wake-send.mjs
-BRIDGE_WAKE_BUNDLE_HOST_PATH=/absolute/path/to/aru-sender-bundle.json
-```
+- control 容器内 `0.0.0.0:9443`；
+- 宿主机严格绑定 `127.0.0.1:${BRIDGE_CONTROL_HOST_PORT:-9443}:9443`；
+- 公网仅通过受控 HTTPS 反向代理；
+- TLS key/cert、Control Token 与 sender 模块从仓库外只读挂载；
+- control 对 `bridge-pairing` 运行时卷读写，environment bridge 只读；
+- 精确 HTTPS Origin 白名单、Bearer 鉴权与 20 KiB 请求体上限。
 
-启动时叠加：
+受保护保存 API 已实现。保存配对只写 bundle secret，不创建事件、不初始化递送，也不发送消息；测试对此有明确断言。
 
-```bash
-docker compose -f compose.yaml -f compose.wake.example.yaml up -d
-```
+完整结构、反向代理要求、Origin 确认与 VPS 只读预检见 [`control-deployment.md`](control-deployment.md)。
 
-要求：
+## 自动验收现状
 
-- sender 和 bundle 必须同时提供；
-- 两者均只读挂载；
-- bundle 仅服务账号可读；
-- `BRIDGE_SEND_STARTUP_TEST` 默认保持 `false`；
-- 未经明确确认，不得执行真实测试递送。
+GitHub Actions 已执行并持续回归：
 
-## 直接外部触发器模式
+- [x] `npm run check`；
+- [x] `npm test`；
+- [x] Control Compose 结构校验；
+- [x] 正式 Dockerfile 构建；
+- [x] 镜像常见 secret 路径检查；
+- [x] 未配置 sender、`enabled: false` 时不采集、不排队、不发送；
+- [x] 非 root、只读根文件系统、状态文件 `0600`、健康检查和优雅停止；
+- [x] 完全离线的假 sender + 假 bundle 容器集成；
+- [x] 保存配对不触发发送。
 
-尚未达到可部署状态。目前只有控制面板的页面内存校验，不存在正式保存 API，也没有完整独立适配器。不要通过临时无鉴权 HTTP 接口、环境变量明文或仓库文件保存发送凭据。
+## 尚未执行的真实环境步骤
+
+- [ ] VPS 只读预检；
+- [ ] 基于实机情况定稿部署与回滚；
+- [ ] 空载 control 部署，bridge 保持 `enabled: false`；
+- [ ] 普通卡片首次“检查连接”并确认实际 Origin；
+- [ ] 经单独确认后保存真实 sender bundle；
+- [ ] 部署后空载运行验收；
+- [ ] 再次单独确认后进行一次真实测试递送。
 
 ## 数据和日志
 
-运行状态可以保存：
+运行状态只保存继续运行所需的脱敏快照、规则状态、最新待发送事件、稳定事件 ID 与最多 7 天/200 条的脱敏排障记录。不得保存城市名、搜索文字、聊天记录、完整模板、最终成功递送正文或凭据。普通日志使用字段白名单。
 
-- 上一份脱敏快照；
-- 规则持续确认与冷却状态；
-- 最新待发送事件；
-- 稳定事件 ID；
-- 最多 7 天 / 200 条的脱敏排障记录。
-
-不得保存城市名、搜索文字、聊天记录、完整模板、最终成功递送正文或凭据。普通日志使用字段白名单。
-
-## 验收清单
-
-- [ ] `npm run check` 通过；
-- [ ] `npm test` 全部通过；
-- [ ] 正式 Dockerfile 构建通过；
-- [ ] 未配置 sender 时不读 secret、不发送；
-- [ ] 容器以非 root 用户运行；
-- [ ] 只读根文件系统和命名卷可用；
-- [ ] 镜像层与文件列表不含 secret；
-- [ ] 保存设置不触发发送；
-- [ ] 免打扰与断网恢复只发送最新状态；
-- [ ] 真实测试递送已获得单独确认。
+当前阶段完成度、普通卡片 Origin 候选和严格授权边界见 [`project-handoff.md`](project-handoff.md)。
