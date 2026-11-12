@@ -19,7 +19,9 @@
   "sunrise": "06:20",
   "sunset": "17:48",
   "airQuality": "未启用",
-  "summary": "当前有小雨，体感约 17℃。",
+  "uvIndex": 6.4,
+  "uvLevel": "强",
+  "summary": "当前有小雨，体感约 17℃，紫外线 6.4（强）。",
   "changes": ["降水刚刚开始"]
 }
 ```
@@ -41,6 +43,8 @@
     "temperature": 18,
     "feelsLike": 17,
     "humidity": 84,
+    "uvIndex": 6.4,
+    "uvLevel": "强",
     "precipitationProbability": 80,
     "isRaining": true
   },
@@ -58,8 +62,8 @@
 
 ## 模板约束
 
-模板只进行白名单纯文本替换，不执行代码。单份模板最长 4000 字符，最终正文最长 6000 字符。模板变量不提供城市、坐标、内部 ID、Token、文件或进程环境变量。
+模板只进行白名单纯文本替换，不执行代码。单份模板最长 4000 字符，最终正文最长 6000 字符。模板变量包括 `uv_index`，但不提供城市、坐标、内部 ID、Token、文件或进程环境变量。
 
 ## 适配边界
 
-路径 A 将 `deliveryText` 交给兼容的 `submitWakeEvent(bundle, content)`；路径 B 后续由独立直接外部触发器适配器实现。两条路径均不得把位置或凭据放入环境事件。
+两条递送路径都将最终 `deliveryText` 交给兼容的 `submitWakeEvent(bundle, content)` sender，不复制第二份加密协议，也不得把位置或凭据放入环境事件。

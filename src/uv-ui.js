@@ -1,0 +1,1 @@
+(()=>{const base=renderSnapshot;renderSnapshot=function(){base();const s=snapshot(),target=document.querySelector('#uvIndex');if(target)target.textContent=s.uvIndex==null?'暂不可用':`${s.uvIndex} · ${s.uvLevel||'未知'}`;};renderSnapshot();})();

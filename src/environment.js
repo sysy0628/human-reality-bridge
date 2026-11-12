@@ -1,24 +1,5 @@
-const DEFAULT_SETTINGS = {
-  enabled:true, scheduledEnabled:true, intervalMinutes:180, deliverWithoutChange:true,
-  airQualityEnabled:false, historyEnabled:true, changeEnabled:true, watchPrecipitation:true,
-  watchWeather:true, watchTemperature:true, temperatureDelta:3, watchPresence:true,
-  persistMinutes:10, cooldownMinutes:60, quietEnabled:true, quietStart:'23:30', quietEnd:'07:00',
-  scheduledTemplate:TEMPLATE_DEFAULTS.scheduled, changeTemplate:TEMPLATE_DEFAULTS.change,
-  templateDrafts:null, cityQuery:'', selectedPlace:null,
-  customRules:[
-    {id:'rain-probability',enabled:true,field:'precipitationProbability',operator:'gte',value:70,persistMinutes:10,cooldownMinutes:60,action:'immediate'},
-    {id:'feels-like-drop',enabled:true,field:'feelsLikeDelta',operator:'lte',value:-4,persistMinutes:10,cooldownMinutes:120,action:'normal'}
-  ]
-};
-const RULE_FIELDS = {
-  precipitationProbability:{label:'降水概率',unit:'%',kind:'number'}, temperature:{label:'当前温度',unit:'℃',kind:'number'},
-  temperatureDelta:{label:'温度变化',unit:'℃',kind:'number'}, feelsLikeDelta:{label:'体感温度变化',unit:'℃',kind:'number'},
-  humidity:{label:'湿度',unit:'%',kind:'number'}, presence:{label:'地点状态',unit:'',kind:'state'}, weather:{label:'天气状态',unit:'',kind:'state'}
-};
-const RULE_OPERATORS = {gte:'大于或等于',lte:'小于或等于',gt:'大于',lt:'小于',changed:'发生变化',equals:'变为'};
-const DEMO_SNAPSHOTS = [
-  {observedAt:'14:30',placeLabel:'位置已配置',presence:'在家',weather:'多云',icon:'☁️',temperature:21,feelsLike:21,humidity:67,wind:'东风 2 级',airQuality:'良',light:'午后光线柔和',summary:'云层铺在城市上空，风很轻，窗边的光线安静而均匀。',changes:['天气数据已同步']},
-  {observedAt:'14:42',placeLabel:'位置已配置',presence:'在家',weather:'小雨',icon:'🌧️',temperature:18,feelsLike:17,humidity:84,wind:'东北风 3 级',airQuality:'优',light:'午后偏暗',summary:'潮湿的风贴着窗边，雨水让午后的光线暗了下来。',changes:['降雨刚刚开始','体感下降约 4℃']},
-  {observedAt:'17:58',placeLabel:'位置已配置',presence:'外出',weather:'雨停',icon:'🌥️',temperature:17,feelsLike:16,humidity:78,wind:'北风 2 级',airQuality:'优',light:'临近日落',summary:'雨停了，路面仍留着潮湿的反光，天色正缓慢转暗。',changes:['降雨已经停止','地点状态变为外出']}
-];
+const DEFAULT_SETTINGS={enabled:true,scheduledEnabled:true,intervalMinutes:180,deliverWithoutChange:true,airQualityEnabled:false,historyEnabled:true,changeEnabled:true,watchPrecipitation:true,watchWeather:true,watchTemperature:true,temperatureDelta:3,watchPresence:true,persistMinutes:10,cooldownMinutes:60,quietEnabled:true,quietStart:'23:30',quietEnd:'07:00',scheduledTemplate:TEMPLATE_DEFAULTS.scheduled,changeTemplate:TEMPLATE_DEFAULTS.change,templateDrafts:null,cityQuery:'',selectedPlace:null,customRules:[{id:'rain-probability',enabled:true,field:'precipitationProbability',operator:'gte',value:70,persistMinutes:10,cooldownMinutes:60,action:'immediate'},{id:'feels-like-drop',enabled:true,field:'feelsLikeDelta',operator:'lte',value:-4,persistMinutes:10,cooldownMinutes:120,action:'normal'}]};
+const RULE_FIELDS={precipitationProbability:{label:'降水概率',unit:'%',kind:'number'},temperature:{label:'当前温度',unit:'℃',kind:'number'},temperatureDelta:{label:'温度变化',unit:'℃',kind:'number'},feelsLikeDelta:{label:'体感温度变化',unit:'℃',kind:'number'},humidity:{label:'湿度',unit:'%',kind:'number'},presence:{label:'地点状态',unit:'',kind:'state'},weather:{label:'天气状态',unit:'',kind:'state'}};
+const RULE_OPERATORS={gte:'大于或等于',lte:'小于或等于',gt:'大于',lt:'小于',changed:'发生变化',equals:'变为'};
+const DEMO_SNAPSHOTS=[{observedAt:'14:30',placeLabel:'位置已配置',presence:'在家',weather:'多云',icon:'☁️',temperature:21,feelsLike:21,humidity:67,wind:'东风 2 级',airQuality:'良',uvIndex:2,uvLevel:'弱',light:'午后光线柔和',summary:'云层铺在城市上空，风很轻，窗边的光线安静而均匀。',changes:['天气数据已同步']},{observedAt:'14:42',placeLabel:'位置已配置',presence:'在家',weather:'小雨',icon:'🌧️',temperature:18,feelsLike:17,humidity:84,wind:'东北风 3 级',airQuality:'优',uvIndex:1,uvLevel:'弱',light:'午后偏暗',summary:'潮湿的风贴着窗边，雨水让午后的光线暗了下来。',changes:['降雨刚刚开始','体感下降约 4℃']},{observedAt:'17:58',placeLabel:'位置已配置',presence:'外出',weather:'雨停',icon:'🌥️',temperature:17,feelsLike:16,humidity:78,wind:'北风 2 级',airQuality:'优',uvIndex:0.2,uvLevel:'弱',light:'临近日落',summary:'雨停了，路面仍留着潮湿的反光，天色正缓慢转暗。',changes:['降雨已经停止','地点状态变为外出']}];
 function isQuietTime(now,start,end){const minute=now.getHours()*60+now.getMinutes();const parse=value=>value.split(':').map(Number).reduce((h,m)=>h*60+m);const from=parse(start),to=parse(end);return from<=to?minute>=from&&minute<to:minute>=from||minute<to;}
