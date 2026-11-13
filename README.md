@@ -2,7 +2,7 @@
 
 人类现实感应桥（Human Reality Bridge）把公开气象数据整理为克制、可配置的“使用者所处的人类现实环境观测”，再通过 Aru 外部触发器主动递送给协作者。
 
-> 项目正在准备首次公开发行。核心链路已经在真实 VPS、真实 Aru 卡片与真实外部触发器上运行验证；仓库仍需完成安装自动化和干净环境验收，暂不宣称“克隆即可使用”。
+> 项目已完成真实链路验证、公开部署工具、发布包干净安装演练与秘密扫描，正在等待维护者最终确认公开仓库和首个 Release。部署仍面向熟悉 Docker、HTTPS 反向代理和 secret 管理的技术用户。
 
 ## 能做什么
 
@@ -48,22 +48,25 @@ latitude / longitude / timezone
 - 真实定时与规则变化递送；
 - 城市切换、地点状态和原生组件偏好；
 - 非 root、只读根文件系统、能力删除与资源限制；
-- mock 测试、离线 sender 集成、可复现发布包与 Docker 构建。
+- 独立 Control/Settings Token 与 `0600` 私有生成物；
+- 单文件部署卡片构建；
+- 从可复现发布包执行的干净安装演练；
+- mock 测试、离线 sender 集成、Docker 构建与源码/历史秘密扫描。
 
-首次公开发行前仍需完成：
+首次公开发行只剩维护动作：
 
-- 初始化与卡片构建脚本；
-- 从干净主机执行一次完整安装验收；
-- 最终秘密扫描；
-- `v0.1.0` 标签与 Release。
+- 将仓库可见性改为 Public；
+- 创建 `v0.1.0` 标签与 Release；
+- 上传由对应提交生成并校验的可复现发布包。
 
-## 本地验证
+## 快速验证
 
 需要 Node.js 20 或更高版本（CI 使用 Node.js 22）：
 
 ```bash
 npm run check
 npm test
+bash scripts/audit-source.sh
 ```
 
 容器与 Compose 验收：
@@ -77,9 +80,32 @@ bash scripts/smoke-mock-sender-container.sh human-reality-bridge:local
 
 这些测试使用假凭据，不连接真实 Aru。
 
-## 部署提示
+## 安全部署工具
 
-当前部署流程面向熟悉 Docker、HTTPS 反向代理和 secret 管理的技术用户。开始前请阅读：
+生成独立 Control/Settings Token 和私有部署描述：
+
+```bash
+node scripts/init-deployment.mjs \
+  --output private-deployment \
+  --origin https://YOUR-ARU-CARD-ORIGIN \
+  --settings-base-url https://YOUR-CONTROL-HOST \
+  --sender /absolute/path/to/wake-send.mjs \
+  --tls-key /absolute/path/to/control-tls.key \
+  --tls-cert /absolute/path/to/control-tls.crt
+```
+
+生成内联资源、含部署专用 Settings Token 的单文件 Aru 卡片：
+
+```bash
+node scripts/build-card.mjs \
+  --base-url https://YOUR-CONTROL-HOST \
+  --token-file private-deployment/secrets/settings-token \
+  --output private-build/human-reality-bridge.html
+```
+
+`private-deployment/` 与 `private-build/` 均默认忽略。生成卡片包含秘密，不得提交或公开分享。完整步骤见 [部署说明](docs/deployment.md)。
+
+## 文档
 
 - [架构与递送路径](docs/architecture.md)
 - [部署说明](docs/deployment.md)
@@ -88,7 +114,7 @@ bash scripts/smoke-mock-sender-container.sh human-reality-bridge:local
 - [致谢与数据署名](CREDITS.md)
 - [安全政策](SECURITY.md)
 
-运行者需要自行准备 HTTPS 域名/入口、TLS 证书、随机设置 Token、Aru sender bundle，以及兼容的 `submitWakeEvent(bundle, content)` sender。真实 secret 必须留在仓库外。
+运行者需要自行准备 HTTPS 域名/入口、TLS 证书、Aru sender bundle，以及兼容的 `submitWakeEvent(bundle, content)` sender。真实 secret 必须留在仓库外。
 
 ## 参考、数据来源与致谢
 
@@ -102,7 +128,7 @@ bash scripts/smoke-mock-sender-container.sh human-reality-bridge:local
 - `server/`：天气、规则、模板、状态、日志、sender 与控制服务；
 - `src/`、`index.html`：Aru 卡片前端源码；
 - `test/`：mock 与边界测试；
-- `scripts/`：发布包、Compose 和离线容器验收；
+- `scripts/`：初始化、卡片构建、发布包、审计和离线容器验收；
 - `docs/`：架构、部署和事件契约；
 - `.github/workflows/validate.yml`：持续验证。
 

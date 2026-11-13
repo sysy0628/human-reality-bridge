@@ -24,6 +24,18 @@ jobs:
       - name: Mock test suite
         run: npm test
 
+  security:
+    name: Source and history secret audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Audit tracked source and reachable history
+        shell: bash
+        run: bash scripts/audit-source.sh
+
   release:
     name: Reproducible release bundle
     runs-on: ubuntu-latest
@@ -69,7 +81,7 @@ jobs:
           cid="$(docker create human-reality-bridge:ci)"
           trap 'docker rm -f "$cid" > /dev/null 2>&1 || true' EXIT
           listing="$(docker export "$cid" | tar -tf -)"
-          if printf '%s\n' "$listing" | grep -E '(^|/)(\.env|config\.json|.*sender-bundle.*\.json|secrets?)(/|$)'; then
+          if printf '%s\n' "$listing" | grep -E '(^|/)(\.env|config\.json|.*sender-bundle.*\.json|control-token|settings-token|secrets?)(/|$)'; then
             echo 'Forbidden secret-like path found in image' >&2
             exit 1
           fi
