@@ -1,0 +1,3 @@
+function weatherPlaceKey(place){const value=storedPlace(place);return value?`${value.latitude.toFixed(6)},${value.longitude.toFixed(6)},${value.timezone}`:'';}
+const unguardedFetchWeather=fetchWeather;
+fetchWeather=async function(place,options){const requestedKey=weatherPlaceKey(place),result=await unguardedFetchWeather(place,options);if(typeof settings!=='undefined'&&requestedKey!==weatherPlaceKey(settings.selectedPlace))return new Promise(()=>{});return{...result,weatherPlaceKey:requestedKey};};
