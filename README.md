@@ -1,89 +1,108 @@
 # 人类现实感应桥
 
-> 当前状态：**Private 内部验证版**。尚未面向公众发布，也不应被视为已完成的通用部署包。
+人类现实感应桥（Human Reality Bridge）把公开气象数据整理为克制、可配置的“使用者所处的人类现实环境观测”，再通过 Aru 外部触发器主动递送给协作者。
 
-人类现实感应桥把公开气象源的观测整理为客观、克制的“使用者所处的人类现实环境数据”，再按定时计划或显著变化递送到 Aru。这些数据不是 AI 的亲身感官，也不表示 AI 与使用者处于同一物理空间。
+> 项目正在准备首次公开发行。核心链路已经在真实 VPS、真实 Aru 卡片与真实外部触发器上运行验证；仓库仍需完成许可证选择、安装自动化和干净环境验收，暂不宣称“克隆即可使用”。
 
-## 当前架构
+## 能做什么
+
+- Open-Meteo 当前天气、温度、体感、湿度、风、降水概率、云量、昼夜、日出日落与紫外线；
+- 默认关闭、按需查询的空气质量；
+- 手动地点状态（在家、外出、自定义可复用标签），不读取或推断轨迹；
+- 定时递送、显著变化递送、持续确认、冷却时间与跨午夜免打扰；
+- 单槽位最新状态队列：恢复网络后只发送最新环境，不补发过期天气；
+- 定时与变化文案模板，使用白名单变量进行纯文本替换；
+- 可选的 Aru 原生环境组件偏好，标题可自定义，默认关闭；
+- 脱敏日志、短期排障记录和容器健康检查。
+
+## 架构
 
 ```text
-Open-Meteo → 环境服务 → 兼容 submitWakeEvent sender → Aru 外部触发器
-                      ↑
-                Aru 普通卡片
-                      ↓
-              受保护 HTTPS control API
+Open-Meteo
+  → VPS 环境服务（取数、脱敏、规则、队列）
+  → 兼容 submitWakeEvent(bundle, content) 的 sender
+  → Aru 外部触发器
+  → 协作者
+
+Aru 卡片
+  → 显式持久保存 bridgeSettings
+  → 受保护 HTTPS 设置接口
+  → VPS 运行配置
 ```
 
-环境服务支持天气、默认关闭的空气质量、检查与递送频率分离、结构化规则、持续确认、冷却、跨午夜免打扰、单槽位最新状态、用户模板、脱敏排障记录与日志白名单。
+服务端正式位置对象只包含取数所需的：
 
-## 递送与配对状态
+```text
+latitude / longitude / timezone
+```
 
-服务端已经实现：
+城市名、行政区、国家与搜索文字不会进入正式配置、递送正文、普通日志或排障历史。经纬度用于服务端天气取数，但不会出现在递送正文中。
 
-- 动态加载兼容 `submitWakeEvent(bundle, content)` 的 sender；
-- 严格校验 `aru.wake-bridge.sender-bundle.v2`；
-- `0600` 原子凭据存储与脱敏摘要；
-- HTTPS-only、精确 Origin、Bearer 鉴权、20 KiB 请求上限的配对 API；
-- 默认仅监听回环的独立 HTTPS control server；
-- 卡片侧 GET/PUT 配对客户端；
-- control 读写、environment bridge 只读的运行时配对卷；
-- 回环端口、资源与日志限制的 Compose 草案。
+## 当前成熟度
 
-新建 Aru 外部触发器提供兼容的 v2 bundle，因此直接触发器路径复用同一 sender，不复制加密协议。保存配对只写入凭据，不创建或发送事件；该边界有 mock 测试锁定。
+已验证：
 
-尚未进行真实 VPS 部署、真实配对或真实递送。
+- 真实 VPS 双容器运行；
+- 卡片设置持久化与 HTTPS 同步；
+- 真实 sender bundle 配对；
+- 真实定时与规则变化递送；
+- 城市切换、地点状态和原生组件偏好；
+- 非 root、只读根文件系统、能力删除与资源限制；
+- mock 测试、离线 sender 集成、可复现发布包与 Docker 构建。
 
-## 隐私边界
+首次公开发行前仍需完成：
 
-城市、行政区、搜索文字、经纬度与内部位置 ID 只允许在天气取数边界使用，不进入卡片环境展示、递送正文、普通日志、排障历史、模板变量或对外事件。
+- 许可证选择；
+- 初始化与卡片构建脚本；
+- 从干净主机执行一次完整安装验收；
+- 最终秘密扫描；
+- `v0.1.0` 标签与 Release。
 
-真实 sender bundle、Token、`.env` 与运行配置不得提交到仓库。卡片只允许持久化控制地址；Control Token 与 sender bundle 只留页面内存。
+## 本地验证
 
-## 自动验证
-
-需要 Node.js 20 或更高版本：
+需要 Node.js 20 或更高版本（CI 使用 Node.js 22）：
 
 ```bash
 npm run check
 npm test
 ```
 
-GitHub Actions 还执行：
+容器与 Compose 验收：
 
-- Control Compose 结构校验；
-- 基础 Docker 镜像构建；
-- 镜像常见 secret 路径检查；
-- `--network none` 的关闭态容器 smoke test；
-- `--network none` 的假 sender + 假 bundle 集成测试。
+```bash
+docker build -t human-reality-bridge:local .
+bash scripts/validate-control-compose.sh
+bash scripts/smoke-disabled-container.sh human-reality-bridge:local
+bash scripts/smoke-mock-sender-container.sh human-reality-bridge:local
+```
 
-CI 不加载真实凭据、不连接 Wake Field 或 Aru，也不执行真实递送。
+这些测试使用假凭据，不连接真实 Aru。
 
-## 当前阶段
+## 部署提示
 
-已完成代码与 mock 层的控制 API、鉴权、CORS、bundle 存储、日志脱敏、卡片配对客户端、安全部署草案和自动验证。
+当前部署流程面向熟悉 Docker、HTTPS 反向代理和 secret 管理的技术用户。开始前请阅读：
 
-尚未完成：
+- [架构与递送路径](docs/architecture.md)
+- [部署说明](docs/deployment.md)
+- [控制服务安全部署](docs/control-deployment.md)
+- [事件契约](docs/event-schema.md)
+- [安全政策](SECURITY.md)
 
-- VPS 只读预检及基于实机情况的部署/回滚定稿；
-- 空载 control 服务部署；
-- 普通卡片真实“检查连接”及网络侧 Origin 确认；
-- 真实 bundle 配对；
-- 部署后空载运行验收；
-- 经单独确认的一次真实测试递送。
-
-详细、可供普通对话直接读取的状态见 [`docs/project-handoff.md`](docs/project-handoff.md)。部署边界见 [`docs/control-deployment.md`](docs/control-deployment.md)。
+运行者需要自行准备 HTTPS 域名/入口、TLS 证书、随机设置 Token、Aru sender bundle，以及兼容的 `submitWakeEvent(bundle, content)` sender。真实 secret 必须留在仓库外。
 
 ## 目录
 
-- `server/`：环境服务、规则、模板、状态、日志、sender 与 control 服务；
-- `src/`、`index.html`：Aru 普通卡片前端源码；
-- `test/`：mock 测试；
-- `scripts/`：Compose 校验与无网络容器测试；
-- `.github/workflows/validate.yml`：Private 仓库自动验证；
-- `docs/project-handoff.md`：当前状态、阶段完成度与下一步；
-- `docs/control-deployment.md`：控制服务安全部署与只读预检；
-- `compose.yaml`、`compose.control.example.yaml`：基础与控制服务草案。
+- `server/`：天气、规则、模板、状态、日志、sender 与控制服务；
+- `src/`、`index.html`：Aru 卡片前端源码；
+- `test/`：mock 与边界测试；
+- `scripts/`：发布包、Compose 和离线容器验收；
+- `docs/`：架构、部署和事件契约；
+- `.github/workflows/validate.yml`：持续验证。
 
-## 发布与许可证
+## 安全与隐私
 
-仓库当前保持 Private，尚未选择开源许可证。未经维护者明确决定，不应公开、镜像或对外发布。
+永远不要提交：`.env`、真实 `config.json`、Token、TLS 私钥、sender bundle、部署专用卡片、日志或状态卷。怀疑凭据泄露时，应先撤销或轮换，再排查。详见 [SECURITY.md](SECURITY.md)。
+
+## 许可证
+
+仓库尚未选择开源许可证。在维护者明确添加 `LICENSE` 之前，代码不自动获得复制、修改或再分发许可；请勿镜像或公开再发布。许可证将由维护者在首次公开发行前决定。

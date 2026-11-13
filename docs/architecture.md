@@ -13,7 +13,7 @@ Open-Meteo
     ↓
 规则 / 持续确认 / 冷却 / 免打扰 / 单槽位最新状态
     ↓
-用户模板纯文本渲染
+用户模板纯文本渲染 + 可选原生组件展示偏好
     ↓
 兼容 submitWakeEvent sender
     ↓
@@ -21,6 +21,12 @@ Aru 外部触发器
 ```
 
 天气适配器接收位置配置，但返回给规则、模板、历史和递送层的对象不包含城市、行政区、搜索文字、经纬度或内部位置 ID。
+
+## 卡片控制面
+
+Aru 卡片将设置显式保存到 `bridgeSettings`，再通过受保护 HTTPS 接口同步服务端。城市搜索结果只在页面内存中存在；正式位置配置只保留纬度、经度和时区。自定义地点标签列表只保存在卡片，服务端仅接收当前选中的状态。
+
+原生环境组件默认关闭。开启后，事件会携带结构化展示偏好和自定义标题，并保留纯文字正文作为兜底。最终是否渲染由收到事件的协作者和客户端能力决定。
 
 ## Sender 与直接触发器
 
@@ -34,30 +40,19 @@ Aru 外部触发器
 
 本项目不复制 Wake Bridge 的加密协议。基础部署未配置 sender 时不读 secret，也不发送。
 
-从 Aru 新建的直接外部触发器提供同一 v2 sender bundle。因此它通过受保护配对流程写入运行时 secret 后，复用相同 sender；不需要复制一条天气、规则、状态或加密实现。
-
-## 受保护配对控制面
+## 受保护控制面
 
 ```text
-Aru 普通卡片
-  → HTTPS browser client
-  → 公网 HTTPS 反向代理
-  → 宿主机 127.0.0.1:9443
-  → HTTPS control server
+Aru 卡片
+  → HTTPS
+  → 受控反向代理
+  → 宿主机回环端口
+  → control 容器
   → Bearer / exact-origin CORS / body limit
-  → v2 bundle 校验
-  → 0600 原子写入 bridge-pairing 卷
+  → 配置卷与配对卷
 ```
 
-已实现：
-
-- 至少 32 字符的 Bearer Token；
-- 精确 HTTPS Origin 白名单；
-- GET 脱敏配对摘要；
-- PUT 严格校验和原子存储；
-- 卡片端 GET/PUT；
-- Token 与 bundle 只留卡片页面内存；
-- 保存配对不创建或发送事件。
+控制面使用至少 32 字符 Token、精确 HTTPS Origin 白名单、严格正文上限和原子写入。保存配对只写凭据，不创建或发送事件。
 
 ## 单槽位语义
 
@@ -68,8 +63,6 @@ Aru 普通卡片
 - 新状态不继承被覆盖事件的退避时间；
 - 同轮优先级为立即规则、普通规则、定时更新。
 
-## 已验证与未完成
+## 验证状态
 
-GitHub CI 已验证语法、mock 测试、Compose 结构、基础镜像、secret 路径、关闭态容器生命周期与完全离线的假 sender 集成。
-
-尚未完成真实 VPS 部署、网络侧 Origin 确认、真实 bundle 配对、部署后空载验收和真实测试递送。当前阶段与授权边界见 [`project-handoff.md`](project-handoff.md)。
+真实 VPS、卡片设置同步、真实 bundle 配对与主动递送均已完成验证。CI 继续覆盖语法、mock 测试、可复现发布包、Compose 结构、基础镜像、secret-like 路径和完全离线的假 sender 集成。

@@ -6,12 +6,12 @@
 {
   "capturedAt": 0,
   "observedAt": "14:30",
+  "presence": "在家",
   "weather": "小雨",
   "temperature": 18,
   "feelsLike": 17,
   "humidity": 84,
   "wind": "东北风 3 级",
-  "precipitation": 0.6,
   "precipitationProbability": 80,
   "cloudCover": 92,
   "isDay": true,
@@ -21,7 +21,7 @@
   "airQuality": "未启用",
   "uvIndex": 6.4,
   "uvLevel": "强",
-  "summary": "当前有小雨，体感约 17℃，紫外线 6.4（强）。",
+  "summary": "地点状态：在家。当前有小雨，体感约 17℃。",
   "changes": ["降水刚刚开始"]
 }
 ```
@@ -38,18 +38,25 @@
   "occurredAt": "2026-01-01T00:00:00.000Z",
   "ruleId": "rain-probability",
   "action": "immediate",
+  "presentation": {
+    "nativeComponent": {
+      "enabled": false,
+      "title": "人类现实感应"
+    }
+  },
   "environment": {
+    "presence": "在家",
     "weather": "小雨",
     "temperature": 18,
     "feelsLike": 17,
     "humidity": 84,
+    "wind": "东北风 3 级",
     "uvIndex": 6.4,
     "uvLevel": "强",
-    "precipitationProbability": 80,
-    "isRaining": true
+    "observedAt": "14:30"
   },
   "changes": ["降水刚刚开始"],
-  "deliveryText": "由用户模板渲染的纯文本"
+  "deliveryText": "由用户模板渲染的纯文字，或组件偏好说明加纯文字兜底"
 }
 ```
 
@@ -60,10 +67,12 @@
 - `environment.latest_state`：待发送槽被新快照刷新；
 - `environment.test`：使用者单独确认的连通性测试。
 
-## 模板约束
+## 模板与展示约束
 
-模板只进行白名单纯文本替换，不执行代码。单份模板最长 4000 字符，最终正文最长 6000 字符。模板变量包括 `uv_index`，但不提供城市、坐标、内部 ID、Token、文件或进程环境变量。
+模板只进行白名单纯文本替换，不执行代码。单份模板最长 4000 字符，最终正文最长 6000 字符。模板变量不提供城市、坐标、内部 ID、Token、文件或环境变量。
 
-## 适配边界
+原生组件偏好默认关闭；开启时只允许协作者展示事件中已有的客观环境字段，不得补写城市名、坐标或未提供的信息，并始终保留纯文字兜底。
 
-两条递送路径都将最终 `deliveryText` 交给兼容的 `submitWakeEvent(bundle, content)` sender，不复制第二份加密协议，也不得把位置或凭据放入环境事件。
+## Sender 边界
+
+最终只将 `deliveryText` 交给兼容的 `submitWakeEvent(bundle, content)` sender，不复制第二份加密协议，也不得把位置或凭据放入环境事件。
