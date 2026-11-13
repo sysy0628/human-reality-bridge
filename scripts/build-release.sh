@@ -26,6 +26,7 @@ mkdir -p "$out_dir" "$stage/$name"
 files=(
   .dockerignore
   .env.example
+  .gitignore
   CREDITS.md
   Dockerfile
   LICENSE
@@ -35,8 +36,11 @@ files=(
   compose.wake.example.yaml
   compose.yaml
   config.example.json
+  docs
+  index.html
   package.json
   server
+  src
   scripts
 )
 

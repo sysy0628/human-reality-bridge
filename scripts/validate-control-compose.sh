@@ -17,6 +17,7 @@ export BRIDGE_CONTROL_HOST_PORT=19443
 export BRIDGE_CONTROL_TLS_KEY_HOST_PATH=/tmp/mock-control.key
 export BRIDGE_CONTROL_TLS_CERT_HOST_PATH=/tmp/mock-control.crt
 export BRIDGE_CONTROL_TOKEN_HOST_PATH=/tmp/mock-control-token
+export BRIDGE_SETTINGS_TOKEN_HOST_PATH=/tmp/mock-settings-token
 
 config="$(docker compose -f compose.yaml -f compose.control.example.yaml config)"
 printf '%s\n' "$config" | grep -q 'host_ip: 127.0.0.1'
@@ -24,8 +25,13 @@ printf '%s\n' "$config" | grep -q 'published: "19443"'
 printf '%s\n' "$config" | grep -q 'target: 9443'
 printf '%s\n' "$config" | grep -q 'BRIDGE_CONTROL_HOST: 0.0.0.0'
 printf '%s\n' "$config" | grep -q 'BRIDGE_CONTROL_ALLOWED_ORIGINS: https://card.example'
+printf '%s\n' "$config" | grep -q 'BRIDGE_SETTINGS_TOKEN_FILE: /run/control-secrets/settings-token'
+printf '%s\n' "$config" | grep -q 'BRIDGE_CONTROL_CONFIG_FILE: /app/config/config.json'
 printf '%s\n' "$config" | grep -q 'BRIDGE_WAKE_BUNDLE_FILE: /app/pairing/aru-sender-bundle.json'
 printf '%s\n' "$config" | grep -q 'BRIDGE_CONTROL_BUNDLE_FILE: /app/pairing/aru-sender-bundle.json'
+printf '%s\n' "$config" | grep -q 'source: /tmp/mock-settings-token'
+printf '%s\n' "$config" | grep -q 'target: /run/control-secrets/settings-token'
+printf '%s\n' "$config" | grep -q 'target: /app/config'
 printf '%s\n' "$config" | grep -q 'read_only: true'
 printf '%s\n' "$config" | grep -q 'mem_limit: "100663296"'
 printf '%s\n' "$config" | grep -q 'mem_limit: "134217728"'
