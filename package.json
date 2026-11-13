@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "description": "把人类现实环境变化投递到 Aru 外部触发器",
+  "license": "PolyForm-Noncommercial-1.0.0",
   "type": "module",
   "scripts": {
     "start": "node server/index.js",

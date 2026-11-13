@@ -26,7 +26,9 @@ mkdir -p "$out_dir" "$stage/$name"
 files=(
   .dockerignore
   .env.example
+  CREDITS.md
   Dockerfile
+  LICENSE
   README.md
   SECURITY.md
   compose.control.example.yaml
@@ -51,7 +53,6 @@ printf '%s\n' "$commit" > "$stage/$name/SOURCE_COMMIT"
     | xargs -0 sha256sum > SHA256SUMS
 )
 
-# GNU tar plus gzip -n removes filesystem ownership, ordering and gzip timestamps.
 tar --sort=name \
   --mtime="@$epoch" \
   --owner=0 --group=0 --numeric-owner \
