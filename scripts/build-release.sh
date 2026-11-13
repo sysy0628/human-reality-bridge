@@ -50,11 +50,18 @@ for path in "${files[@]}"; do
 done
 
 printf '%s\n' "$commit" > "$stage/$name/SOURCE_COMMIT"
+
+# Normalize filesystem modes so the archive is reproducible across caller umasks.
+find "$stage/$name" -type d -exec chmod 0755 {} +
+find "$stage/$name" -type f -exec chmod 0644 {} +
+find "$stage/$name/scripts" -type f \( -name '*.sh' -o -name '*.mjs' \) -exec chmod 0755 {} +
+
 (
   cd "$stage/$name"
   find . -type f ! -name SHA256SUMS -print0 \
     | LC_ALL=C sort -z \
     | xargs -0 sha256sum > SHA256SUMS
+  chmod 0644 SHA256SUMS
 )
 
 tar --sort=name \
