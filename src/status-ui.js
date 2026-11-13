@@ -1,0 +1,3 @@
+function updateConnectionBadges(){const overall=document.querySelector('#sourceOverallStatus'),weather=document.querySelector('#weatherSourceStatus'),observed=document.querySelector('#observedAt'),mode=document.querySelector('#dataMode'),hasPlace=Boolean(settings.selectedPlace);if(overall){overall.textContent=liveSnapshot?'已接入':hasPlace?'同步中':'待配置';overall.classList.toggle('wait',!liveSnapshot);}if(weather&&!liveSnapshot)weather.textContent=hasPlace?'同步中':'待配置';if(!liveSnapshot&&observed)observed.textContent=hasPlace?'正在同步天气':'尚未同步';if(!liveSnapshot&&mode)mode.textContent=hasPlace?'位置已配置':'等待配置';}
+const statusRenderSnapshot=renderSnapshot;renderSnapshot=function(){statusRenderSnapshot();updateConnectionBadges();};
+updateConnectionBadges();
