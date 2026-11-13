@@ -4,11 +4,11 @@ services:
     container_name: human-reality-bridge
     restart: unless-stopped
     init: true
-    env_file:
-      - .env
     environment:
       BRIDGE_CONFIG: /app/config/config.json
       BRIDGE_DATA_DIR: /app/data
+      BRIDGE_POLL_MINUTES: ${BRIDGE_POLL_MINUTES:-10}
+      BRIDGE_SEND_STARTUP_TEST: ${BRIDGE_SEND_STARTUP_TEST:-false}
     volumes:
       - bridge-config:/app/config
       - bridge-data:/app/data

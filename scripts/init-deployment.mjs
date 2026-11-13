@@ -14,6 +14,7 @@ const origin=exactHttpsOrigin(input.origin||'');
 const sender=await requireAbsoluteFile('sender',input.sender);
 const tlsKey=await requireAbsoluteFile('tls-key',input['tls-key']);
 const tlsCert=await requireAbsoluteFile('tls-cert',input['tls-cert']);
+const settingsBaseURL=input['settings-base-url']?exactHttpsOrigin(input['settings-base-url']):fail('必须提供 settings-base-url');
 const port=Number(input.port||9443);if(!Number.isInteger(port)||port<1||port>65535)fail('port 无效');
 await mkdir(output,{recursive:true,mode:0o700});
 const secrets=resolve(output,'secrets');await mkdir(secrets,{mode:0o700}).catch(error=>{if(error.code!=='EEXIST')throw error});
@@ -21,6 +22,8 @@ const controlPath=resolve(secrets,'control-token'),settingsPath=resolve(secrets,
 await exclusive(controlPath,randomBytes(48).toString('base64url')+'\n');
 await exclusive(settingsPath,randomBytes(48).toString('base64url')+'\n');
 const env=[
+'BRIDGE_POLL_MINUTES=10',
+'BRIDGE_SEND_STARTUP_TEST=false',
 `BRIDGE_ARU_SENDER_HOST_PATH=${sender}`,
 `BRIDGE_CONTROL_ALLOWED_ORIGINS=${origin}`,
 `BRIDGE_CONTROL_HOST_PORT=${port}`,
@@ -31,6 +34,6 @@ const env=[
 ''
 ].join('\n');
 await exclusive(resolve(output,'.env'),env);
-const guide={schema:'human-reality-bridge.deployment.v1',createdAt:new Date().toISOString(),origin,composeFiles:['compose.yaml','compose.control.example.yaml'],card:{settingsBaseURL:input['settings-base-url']?exactHttpsOrigin(input['settings-base-url']):'https://YOUR-CONTROL-HOST',settingsTokenFile:settingsPath},notes:['目录包含秘密，不得提交 Git','先保持 config.example.json 中 enabled=false','生成卡片后不得把生成物提交仓库']};
+const guide={schema:'human-reality-bridge.deployment.v1',createdAt:new Date().toISOString(),origin,composeFiles:['compose.yaml','compose.control.example.yaml'],card:{settingsBaseURL,settingsTokenFile:settingsPath},notes:['目录包含秘密，不得提交 Git','初次启动保持 enabled=false','生成卡片后不得把生成物提交仓库']};
 await exclusive(resolve(output,'deployment.json'),JSON.stringify(guide,null,2)+'\n');
 console.log(JSON.stringify({ok:true,output,envFile:resolve(output,'.env'),settingsTokenFile:settingsPath,next:'使用 scripts/build-card.mjs 生成部署专用卡片；不要提交生成物'},null,2));
