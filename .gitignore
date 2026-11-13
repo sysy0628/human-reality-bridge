@@ -11,4 +11,7 @@ config.json
 *.secrets
 *sender-bundle*.json
 secrets/
+private-deployment/
+private-build/
+*.deployment.html
 docs/handoff.md

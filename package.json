@@ -8,7 +8,9 @@
   "scripts": {
     "start": "node server/index.js",
     "start:control": "node server/control-server.js",
-    "check": "find server src test -type f -name '*.js' -print0 2>/dev/null | xargs -0 -r -n1 node --check",
+    "init:deployment": "node scripts/init-deployment.mjs",
+    "build:card": "node scripts/build-card.mjs",
+    "check": "find server src test scripts -type f \\( -name '*.js' -o -name '*.mjs' \\) -print0 2>/dev/null | xargs -0 -r -n1 node --check",
     "test": "node --test"
   },
   "engines": {
