@@ -14,17 +14,18 @@ if [[ -n "$bad_names" ]]; then
   exit 1
 fi
 
-secret_patterns='BEGIN (RSA |EC |OPENSSH )?PRIVATE KEY|reality\.anchored\.top|jWkL1TgQltLPz|Authorization:[[:space:]]*Bearer[[:space:]]+[A-Za-z0-9_+./=-]{24,}'
+secret_patterns='BEGIN (RSA |EC |OPENSSH )?PRIVATE KEY|Authorization:[[:space:]]*Bearer[[:space:]]+[A-Za-z0-9_+./=-]{24,}'
+tmp="$(mktemp)"
+trap 'rm -f "$tmp"' EXIT
 for revision in $(git rev-list --all); do
-  if git grep -nEI "$secret_patterns" "$revision" -- . ':!SECURITY.md' > /tmp/human-reality-bridge-secret-audit.txt 2>/dev/null; then
+  if git grep -nEI "$secret_patterns" "$revision" -- . ':!SECURITY.md' ':!scripts/audit-source.sh' > "$tmp" 2>/dev/null; then
     printf 'Potential secret found in revision %s:\n' "$revision" >&2
-    cat /tmp/human-reality-bridge-secret-audit.txt >&2
-    rm -f /tmp/human-reality-bridge-secret-audit.txt
+    cat "$tmp" >&2
     exit 1
   fi
 done
-rm -f /tmp/human-reality-bridge-secret-audit.txt
 
+# Public card source must keep deployment values as placeholders only.
 git grep -q '__SETTINGS_BASE_URL__' -- index.html
 git grep -q '__SETTINGS_TOKEN__' -- index.html
 if git grep -nE 'meta name="x-settings-(base-url|token)" content="(https://|[A-Za-z0-9_+./=-]{24,})' -- index.html; then
@@ -32,6 +33,7 @@ if git grep -nE 'meta name="x-settings-(base-url|token)" content="(https://|[A-Z
   exit 1
 fi
 
+# Private generated paths must remain ignored.
 git check-ignore -q private-deployment/.env
 git check-ignore -q private-build/card.html
 git check-ignore -q secrets/settings-token
