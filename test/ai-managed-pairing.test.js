@@ -10,6 +10,6 @@ test('卡片不再向使用者收集控制 Token 或发送凭据', async () => {
   assert.doesNotMatch(index, /data-tab="pairing"/);
   assert.doesNotMatch(index, /pairing-ui\.js|credential\.js/);
   assert.doesNotMatch(app, /senderBundleInput|controlToken|pendingSenderBundle|savePairing/);
-  assert.match(index, /由知舟管理/);
-  assert.match(app, /status\.textContent='由知舟管理'/);
+  assert.match(index, /由你家小机管理/);
+  assert.match(app, /status\.textContent='由你家小机管理'/);
 });
