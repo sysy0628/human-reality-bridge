@@ -1,20 +1,59 @@
 {
   "enabled": false,
-  "location": { "latitude": 30.2741, "longitude": 120.1551, "timezone": "Asia/Shanghai" },
+  "location": {
+    "latitude": 30.2741,
+    "longitude": 120.1551,
+    "timezone": "Asia/Shanghai"
+  },
   "presence": "未设置",
-  "airQuality": { "enabled": false },
-  "diagnostics": { "historyEnabled": true },
-  "scheduled": { "enabled": true, "intervalMinutes": 180, "deliverWithoutChange": true },
-  "quietHours": { "enabled": true, "start": "23:30", "end": "07:00", "timezone": "Asia/Shanghai" },
+  "airQuality": {
+    "enabled": false
+  },
+  "diagnostics": {
+    "historyEnabled": false
+  },
+  "scheduled": {
+    "enabled": false,
+    "intervalMinutes": 180,
+    "deliverWithoutChange": false
+  },
+  "quietHours": {
+    "enabled": false,
+    "start": "23:30",
+    "end": "07:00",
+    "timezone": "Asia/Shanghai"
+  },
   "presentation": {
-    "nativeComponent": { "enabled": false, "title": "人类现实感应" }
+    "nativeComponent": {
+      "enabled": false,
+      "title": "人类现实感应"
+    }
   },
   "templates": {
-    "scheduled": "人类现实环境定时更新｜{{observed_time}}\n{{period}}天气：{{weather}}\n温度 {{temperature}}，体感 {{feels_like}}；湿度 {{humidity}}；{{wind}}。\n天色：{{daylight}}；紫外线：{{uv_index}}；空气质量：{{air_quality}}。\n{{environment_summary}}",
-    "change": "人类现实环境变化｜{{observed_time}}\n触发原因：{{trigger_reason}}\n变化：{{change_summary}}\n当前天气：{{weather}}；温度 {{temperature}}，体感 {{feels_like}}；紫外线 {{uv_index}}。\n{{environment_summary}}"
+    "scheduled": "天气：{{weather}}\n温度：{{temperature}}，体感 {{feels_like}}\n降水：{{precipitation}}\n湿度：{{humidity}}\n风：{{wind}}\n地点状态：{{presence}}\n更新时间：{{observed_time}}",
+    "change": "原因：{{trigger_reason}}\n天气：{{weather}}\n温度：{{temperature}}，体感 {{feels_like}}\n降水：{{precipitation}}\n湿度：{{humidity}}\n风：{{wind}}\n地点状态：{{presence}}\n更新时间：{{observed_time}}"
   },
   "rules": [
-    { "id": "rain-probability", "enabled": false, "field": "precipitationProbability", "operator": "gte", "value": 70, "persistMinutes": 10, "cooldownMinutes": 180, "action": "immediate" },
-    { "id": "feels-like-drop", "enabled": false, "field": "feelsLikeDelta", "operator": "lte", "value": -4, "persistMinutes": 10, "cooldownMinutes": 180, "action": "normal" }
-  ]
+    {
+      "id": "rain-probability",
+      "enabled": false,
+      "field": "precipitationProbability",
+      "operator": "gte",
+      "value": 70,
+      "persistMinutes": 10,
+      "cooldownMinutes": 180,
+      "action": "immediate"
+    },
+    {
+      "id": "feels-like-drop",
+      "enabled": false,
+      "field": "feelsLikeDelta",
+      "operator": "lte",
+      "value": -4,
+      "persistMinutes": 10,
+      "cooldownMinutes": 180,
+      "action": "normal"
+    }
+  ],
+  "locationConfigured": false
 }
