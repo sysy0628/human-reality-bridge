@@ -10,7 +10,7 @@ test('卡片包含降水槽位且初始递送状态为关闭', async () => {
   assert.match(html, /id="precipitation"/);
   assert.match(html, /id="masterStatus">递送已暂停/);
   assert.match(html, /id="masterButton">恢复递送/);
-  assert.match(app, /querySelector\('#precipitation'\)/);
+  assert.match(app, /\$\('#precipitation'\)/);
 });
 
 test('部署文档覆盖混合位置链路和精确代理路由', async () => {
