@@ -15,14 +15,7 @@ bash scripts/validate-control-compose.sh
 
 ## 2. 准备外部文件
 
-运行者需要先准备：
-
-- HTTPS 域名或受控入口；
-- TLS 私钥与证书文件；
-- 兼容 `submitWakeEvent(bundle, content)` 的 sender 模块；
-- Aru 卡片真实 HTTPS Origin。
-
-这些文件必须位于仓库外。sender bundle 不放进仓库或初始化目录，后续通过受保护配对接口写入命名卷。
+运行者需要先准备 HTTPS 域名、TLS 私钥与证书、兼容 `submitWakeEvent(bundle, content)` 的 sender 模块，以及 Aru 卡片真实 HTTPS Origin。这些文件必须位于仓库外。
 
 ## 3. 生成私有部署目录
 
@@ -36,35 +29,13 @@ node scripts/init-deployment.mjs \
   --tls-cert /absolute/path/to/control-tls.crt
 ```
 
-脚本会：
-
-- 严格校验 HTTPS origin 与绝对文件路径；
-- 分别生成 Control Token 和 Settings Token；
-- 以 `0600` 写入 Token、`.env` 和部署描述；
-- 拒绝覆盖已有文件；
-- 不在输出或日志中打印 Token 正文。
-
-`private-deployment/` 已加入 `.gitignore`，但仍应像密码目录一样保管。
+脚本会生成分离的 Control Token 和 Settings Token，以 `0600` 写入私有目录，并拒绝覆盖已有文件。
 
 ## 4. 配置与基础服务
 
-从安全默认值开始：
+从安全默认值开始。示例默认 `enabled: false`、原生组件关闭、主动规则关闭。导入卡片后，人类在卡片中搜索并选择城市；卡片只把坐标和时区一次性提交给自家 VPS，随后立即遗忘具体位置。
 
 ```bash
-cp config.example.json config.json
-```
-
-示例默认 `enabled: false`、原生组件关闭、主动规则关闭。填写属于自己的坐标和时区，不要加入城市名、行政区或搜索文字。
-
-使用生成的环境文件启动：
-
-```bash
-docker compose \
-  --env-file private-deployment/.env \
-  -f compose.yaml \
-  -f compose.control.example.yaml \
-  config
-
 docker compose \
   --env-file private-deployment/.env \
   -f compose.yaml \
@@ -72,7 +43,18 @@ docker compose \
   up -d --build
 ```
 
-检查容器健康状态和有限日志；日志中不得出现坐标、Token、模板全文、最终递送正文或 bundle。
+## 4.1 反向代理新增接口
+
+除既有配对与设置接口外，反向代理还必须精确转发：
+
+- `PUT /v1/location`：一次性保存位置；
+- `GET /v1/location/status`：只返回是否已配置；
+- `GET /v1/environment/current`：只返回脱敏天气；
+- `PUT /v1/settings/environment`：同步非位置设置。
+
+这些接口必须保留 `Origin`、`Authorization` 和 `Content-Type`，并继续校验后端 TLS。位置接口的响应不得回传坐标。城市搜索仍由卡片直接访问 Open-Meteo 地理编码接口；日常天气由 VPS 获取并脱敏返回。
+
+可复制的 Nginx 片段见 [`nginx-control-routes.example.conf`](nginx-control-routes.example.conf)。
 
 ## 5. 生成部署专用卡片
 
@@ -83,52 +65,42 @@ node scripts/build-card.mjs \
   --output private-build/human-reality-bridge.html
 ```
 
-脚本会内联 `index.html` 引用的 `src/` CSS 与 JavaScript，校验 Settings Token 文件权限，注入设置地址和 Token，并拒绝覆盖旧生成物。
+生成卡片包含部署专用 Settings Token，不得提交 GitHub、公开分享或作为通用 Release 附件。
 
-生成后的 HTML：
-
-- 是可以导入 Aru 的单文件卡片源码；
-- 含部署专用 Settings Token；
-- 不得提交 GitHub、公开分享或作为通用 Release 附件；
-- 更新时应重新从当前公开源码生成，不要把旧部署卡片当作源码真源；
-- 卡片更新后，Aru 中已有 `bridgeSettings` 仍是用户设置真源。
-
-`private-build/` 已加入 `.gitignore`。
-
-## 6. 控制面安全边界
-
-Control Token 只用于触发器配对管理；Settings Token 只用于卡片设置同步。两者不得复用。control 容器显式挂载独立 Token、配置卷和配对卷；宿主机 9443 端口只能绑定回环地址，公网请求必须经过 HTTPS 反向代理。
-
-详细 TLS、Origin、挂载和代理要求见 [control-deployment.md](control-deployment.md)。
-
-## 7. 配对与启用
+## 6. 配对与启用
 
 1. 先保持 `enabled: false`；
-2. 验证 HTTPS、精确 Origin 和 Settings Token 同步；
-3. 通过受保护流程保存 sender bundle，确认“保存”没有触发消息；
-4. 检查配置、卷权限和日志；
+2. 在卡片里搜索并选择城市，确认页面只保留“位置已私密配置”；
+3. 验证 HTTPS、精确 Origin 和 Settings Token 同步；
+4. 通过受保护流程保存 sender bundle，确认保存没有触发消息；
 5. 单独执行一次测试递送；
 6. 验收通过后再开启正式采集与递送。
 
-## 8. 更新与回滚
+## 7. 人类会看到什么
 
-- 每次部署使用不可变提交或版本标签构建镜像；
-- 配置卷、状态卷和配对卷独立于镜像；
-- 更新卡片前重新构建部署专用 HTML，并保留 Aru 中的 `bridgeSettings`；
-- 回滚只切换镜像版本，不用旧源码覆盖运行卷；
-- 回滚后检查健康状态、配置版本和待发送槽位。
+协作者不会收到具体位置，只会收到类似：
 
-## 9. 验收清单
+```text
+原因：开始下雨，温度下降 5℃
+天气：小雨
+温度：18℃，体感 17℃
+降水：正在下雨，概率 80%
+湿度：84%
+风：东北风 3 级
+地点状态：在家
+更新时间：14:42
+```
+
+如果开启原生组件，协作者可以自由决定布局、顺序和视觉重点，并在组件后自然回应；系统不要求机械照表排列。无效或不重要的数据可以省略，但已有降水信息不应遗漏，也不得猜测具体位置。
+
+## 8. 验收清单
 
 - [ ] `npm run check` 与 `npm test` 通过；
 - [ ] 两个 Token 不同且文件权限为 `0600`；
-- [ ] 生成卡片不含外链本地 `src/`，且不含未替换占位符；
-- [ ] 镜像不含 secret-like 路径；
+- [ ] 卡片长期状态不含城市、搜索词、经纬度或时区；
+- [ ] 保存设置、位置与配对不会隐式发送；
 - [ ] 两个容器以非 root 和只读根文件系统运行；
 - [ ] 控制端口只绑定回环地址；
-- [ ] HTTPS 上游证书校验开启；
-- [ ] Origin 为精确 HTTPS 值，不使用 `*`；
-- [ ] 保存设置与配对不会隐式发送；
+- [ ] Nginx 精确转发新增 API；
 - [ ] 日志不含位置、正文或秘密；
-- [ ] 关闭与开启原生组件均有纯文字兜底；
-- [ ] 回滚步骤已演练。
+- [ ] 关闭与开启原生组件均有纯文字兜底。
