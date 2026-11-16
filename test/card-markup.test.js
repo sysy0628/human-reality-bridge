@@ -24,3 +24,15 @@ test('部署文档覆盖混合位置链路和精确代理路由', async () => {
   assert.match(nginx, /environment\/current/);
   assert.match(nginx, /settings\/environment/);
 });
+
+test('定时递送提供从半小时到七天的完整间隔', async () => {
+  const app = await readFile(new URL('../src/app.js', import.meta.url), 'utf8');
+  const expected = [
+    [30, '30 分钟'], [60, '1 小时'], [120, '2 小时'], [180, '3 小时'],
+    [240, '4 小时'], [360, '6 小时'], [480, '8 小时'], [720, '12 小时'],
+    [1440, '1 天'], [2880, '2 天'], [4320, '3 天'], [7200, '5 天'], [10080, '7 天']
+  ];
+  for (const [minutes, label] of expected) {
+    assert.match(app, new RegExp(`\\[${minutes},'${label}'\\]`));
+  }
+});
